@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "home-server-monitor": {
+      "command": "node",
+      "args": ["dist/mcp/server.js"],
+      "env": {
+        "TRUENAS_HOST": "192.168.1.100",
+        "TRUENAS_API_KEY": "${TRUENAS_API_KEY}",
+        "PORTAINER_HOST": "192.168.1.100",
+        "PORTAINER_PORT": "9000",
+        "PORTAINER_TOKEN": "${PORTAINER_TOKEN}",
+        "ENABLE_WRITE_OPERATIONS": "true",
+        "REQUIRE_CONFIRMATION": "true",
+        "DB_PATH": "./data/monitor.db"
+      }
+    }
+  }
+}

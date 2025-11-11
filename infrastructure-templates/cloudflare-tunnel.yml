@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - homeserver
+    labels:
+      - "com.homeserver.service=cloudflare-tunnel"
+      - "com.homeserver.managed=true"
+
+networks:
+  homeserver:
+    external: true
