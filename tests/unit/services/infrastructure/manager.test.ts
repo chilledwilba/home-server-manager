@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import type Database from 'better-sqlite3';
 import type { PortainerClient } from '../../../../src/integrations/portainer/client.js';

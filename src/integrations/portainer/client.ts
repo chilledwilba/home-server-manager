@@ -2,6 +2,13 @@ import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('portainer-client');
 
+// Global types for fetch API
+type RequestInit = {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+};
+
 interface PortainerConfig {
   host: string;
   port: number;

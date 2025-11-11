@@ -1,3 +1,4 @@
+/* eslint-disable no-undef, @typescript-eslint/no-explicit-any */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
 // Mock the logger
