@@ -1,5 +1,12 @@
 import { logger } from '../../utils/logger.js';
 
+// Global types for fetch API
+type RequestInit = {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+};
+
 interface AuthentikUser {
   pk: number;
   username: string;

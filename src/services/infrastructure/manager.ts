@@ -1,5 +1,11 @@
 import type Database from 'better-sqlite3';
 import { logger } from '../../utils/logger.js';
+import {
+  validateServiceName,
+  validateStackName,
+  validateEnvVars,
+  sanitizeDockerCompose,
+} from '../../utils/validation.js';
 import { PortainerClient } from '../../integrations/portainer/client.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -151,21 +157,21 @@ export class InfrastructureManager {
     const missing: InfrastructureService[] = [];
 
     // Check which services are deployed
-//     if (this.portainer) {
-//       try {
-//         const stacks = await this.portainer.getStacks();
-//         const stackNames = stacks.map((s: { Name: string }) => s.Name.toLowerCase());
-// 
-//         for (const [key, service] of this.services) {
-//           if (stackNames.includes(key) || stackNames.includes(service.name.toLowerCase())) {
-//             service.status = 'deployed';
-//             deployed.push(service);
-//           }
-//         }
-//       } catch (error) {
-      //         logger.warn({ err: error }, 'Could not fetch Portainer stacks');
-//       }
-//     }
+    if (this.portainer) {
+      try {
+        const stacks = await this.portainer.getStacks();
+        const stackNames = stacks.map((s: { Name: string }) => s.Name.toLowerCase());
+
+        for (const [key, service] of this.services) {
+          if (stackNames.includes(key) || stackNames.includes(service.name.toLowerCase())) {
+            service.status = 'deployed';
+            deployed.push(service);
+          }
+        }
+      } catch {
+        logger.warn('Could not fetch Portainer stacks - Portainer may not be available');
+      }
+    }
 
     // Determine recommendations based on current setup
     const recommendations = this.generateRecommendations();
@@ -349,6 +355,37 @@ export class InfrastructureManager {
     stackId?: number;
     error?: string;
   }> {
+    // Validate service name
+    const serviceNameValidation = validateServiceName(serviceName);
+    if (!serviceNameValidation.valid) {
+      return {
+        success: false,
+        error: serviceNameValidation.error,
+      };
+    }
+
+    // Validate stack name if provided
+    if (options.stackName) {
+      const stackNameValidation = validateStackName(options.stackName);
+      if (!stackNameValidation.valid) {
+        return {
+          success: false,
+          error: stackNameValidation.error,
+        };
+      }
+    }
+
+    // Validate environment variables if provided
+    if (options.envVars) {
+      const envVarsValidation = validateEnvVars(options.envVars);
+      if (!envVarsValidation.valid) {
+        return {
+          success: false,
+          error: `Invalid environment variables: ${envVarsValidation.errors.join(', ')}`,
+        };
+      }
+    }
+
     if (!this.portainer) {
       return {
         success: false,
@@ -370,6 +407,15 @@ export class InfrastructureManager {
       // Generate docker-compose
       const dockerCompose = await this.generateDockerCompose(serviceName, options.envVars);
 
+      // Validate docker-compose content
+      const composeValidation = sanitizeDockerCompose(dockerCompose);
+      if (!composeValidation.valid) {
+        return {
+          success: false,
+          error: `Invalid docker-compose: ${composeValidation.error}`,
+        };
+      }
+
       if (options.dryRun) {
         logger.info({ compose: dockerCompose }, 'Dry run - would deploy');
         return {
@@ -378,11 +424,36 @@ export class InfrastructureManager {
         };
       }
 
-      // TODO: Implement Portainer stack deployment
-      // For now, return the docker-compose but indicate manual deployment needed
+      // Check if Portainer is available
+      if (!this.portainer) {
+        return {
+          success: false,
+          error: "Portainer not configured. Set PORTAINER_HOST, PORTAINER_PORT, and PORTAINER_TOKEN to enable automated deployment.",
+        };
+      }
+
+      // Deploy via Portainer
+      const stackName = options.stackName || serviceName.toLowerCase().replace(/\s+/g, '-');
+      const endpointId = options.endpoint || 1;
+
+      // Convert envVars object to Portainer env array format
+      const env = options.envVars
+        ? Object.entries(options.envVars).map(([name, value]) => ({ name, value }))
+        : [];
+
+      const stack = await this.portainer.deployStack(stackName, dockerCompose, endpointId, env);
+
+      // Update service status
+      service.status = 'deployed';
+
+      // Record in database
+      this.recordDeployment(serviceName, stack.Id, stackName, dockerCompose, options.envVars);
+
+      logger.info({ stackId: stack.Id }, `Successfully deployed ${serviceName}`);
+
       return {
-        success: false,
-        error: "Portainer stack deployment not yet implemented. Use the generated docker-compose file manually.",
+        success: true,
+        stackId: stack.Id,
       };
     } catch (error) {
       logger.error({ err: error }, `Failed to deploy ${serviceName}`);
@@ -396,15 +467,24 @@ export class InfrastructureManager {
   /**
    * Record deployment in database
    */
-  // @ts-expect-error - Will be used when Portainer integration is complete
-  private recordDeployment(serviceName: string, stackId: number): void {
+  private recordDeployment(
+    serviceName: string,
+    stackId: number,
+    _stackName?: string,
+    dockerCompose?: string,
+    envVars?: Record<string, string>,
+  ): void {
     const stmt = this.db.prepare(`
       INSERT INTO infrastructure_deployments
-        (service_name, stack_id, deployed_at, status)
-      VALUES (?, ?, CURRENT_TIMESTAMP, 'active')
+        (service_name, service_type, stack_id, deployed_at, status, docker_compose, env_vars, deployed_by)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP, 'active', ?, ?, 'infrastructure-manager')
     `);
 
-    stmt.run(serviceName, stackId);
+    const service = this.services.get(serviceName);
+    const serviceType = service?.type || 'unknown';
+    const envVarsJson = envVars ? JSON.stringify(envVars) : null;
+
+    stmt.run(serviceName, serviceType, stackId, dockerCompose || null, envVarsJson);
   }
 
   /**
@@ -414,6 +494,15 @@ export class InfrastructureManager {
     success: boolean;
     error?: string;
   }> {
+    // Validate service name
+    const serviceNameValidation = validateServiceName(serviceName);
+    if (!serviceNameValidation.valid) {
+      return {
+        success: false,
+        error: serviceNameValidation.error,
+      };
+    }
+
     if (!this.portainer) {
       return {
         success: false,
@@ -431,12 +520,46 @@ export class InfrastructureManager {
 
     logger.info(`Removing ${serviceName}...`);
 
-    // TODO: Implement Portainer stack removal
-    // For now, just return not-implemented error
-    return {
-      success: false,
-      error: "Portainer stack removal not yet implemented. Manual removal required.",
-    };
+    try {
+      // Find and delete stack
+      const stacks = await this.portainer.getStacks();
+      const stack = stacks.find(
+        (s: { Name: string }) =>
+          s.Name.toLowerCase() === serviceName.toLowerCase() ||
+          s.Name.toLowerCase() === serviceName.toLowerCase().replace(/\s+/g, '-'),
+      );
+
+      if (stack) {
+        await this.portainer.deleteStack(stack.Id);
+        logger.info({ stackId: stack.Id }, `Deleted stack for ${serviceName}`);
+      } else {
+        logger.warn(`No stack found for ${serviceName}`);
+      }
+
+      // Update service status
+      service.status = 'not_deployed';
+
+      // Update database
+      const stmt = this.db.prepare(`
+        UPDATE infrastructure_deployments
+        SET status = 'removed', removed_at = CURRENT_TIMESTAMP
+        WHERE service_name = ? AND status = 'active'
+      `);
+
+      stmt.run(serviceName);
+
+      logger.info(`Successfully removed ${serviceName}`);
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      logger.error({ err: error }, `Failed to remove ${serviceName}`);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   }
 
   /**

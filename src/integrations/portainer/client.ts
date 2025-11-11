@@ -253,6 +253,158 @@ export class PortainerClient {
     return true;
   }
 
+  // Stack Management (Phase 8)
+
+  /**
+   * List all stacks
+   */
+  async getStacks(): Promise<
+    Array<{
+      Id: number;
+      Name: string;
+      Type: number;
+      Status: number;
+      EndpointId: number;
+      SwarmId?: string;
+      Env?: Array<{ name: string; value: string }>;
+    }>
+  > {
+    try {
+      return await this.request<
+        Array<{
+          Id: number;
+          Name: string;
+          Type: number;
+          Status: number;
+          EndpointId: number;
+          SwarmId?: string;
+          Env?: Array<{ name: string; value: string }>;
+        }>
+      >('/stacks');
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to list stacks');
+      throw error;
+    }
+  }
+
+  /**
+   * Deploy a new stack from docker-compose
+   */
+  async deployStack(
+    name: string,
+    dockerCompose: string,
+    endpointId?: number,
+    env?: Array<{ name: string; value: string }>,
+  ): Promise<{
+    Id: number;
+    Name: string;
+    Type: number;
+    EndpointId: number;
+  }> {
+    try {
+      const endpoint = endpointId || this.endpointId;
+
+      logger.info({ name, endpoint }, 'Deploying stack');
+
+      // Portainer expects the stack to be deployed via the compose standalone endpoint
+      const response = await this.request<{
+        Id: number;
+        Name: string;
+        Type: number;
+        EndpointId: number;
+      }>(`/stacks/create/standalone/string?endpointId=${endpoint}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          stackFileContent: dockerCompose,
+          env: env || [],
+        }),
+      });
+
+      logger.info({ stackId: response.Id, name }, 'Stack deployed successfully');
+      return response;
+    } catch (error) {
+      logger.error({ err: error, name }, 'Failed to deploy stack');
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a stack
+   */
+  async deleteStack(stackId: number, endpointId?: number): Promise<void> {
+    try {
+      const endpoint = endpointId || this.endpointId;
+
+      logger.info({ stackId, endpoint }, 'Deleting stack');
+
+      await this.request(`/stacks/${stackId}?endpointId=${endpoint}`, {
+        method: 'DELETE',
+      });
+
+      logger.info({ stackId }, 'Stack deleted successfully');
+    } catch (error) {
+      logger.error({ err: error, stackId }, 'Failed to delete stack');
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing stack
+   */
+  async updateStack(
+    stackId: number,
+    dockerCompose: string,
+    env?: Array<{ name: string; value: string }>,
+    endpointId?: number,
+  ): Promise<void> {
+    try {
+      const endpoint = endpointId || this.endpointId;
+
+      logger.info({ stackId, endpoint }, 'Updating stack');
+
+      await this.request(`/stacks/${stackId}?endpointId=${endpoint}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          stackFileContent: dockerCompose,
+          env: env || [],
+          prune: false,
+        }),
+      });
+
+      logger.info({ stackId }, 'Stack updated successfully');
+    } catch (error) {
+      logger.error({ err: error, stackId }, 'Failed to update stack');
+      throw error;
+    }
+  }
+
+  /**
+   * Get stack details by ID
+   */
+  async getStack(stackId: number): Promise<{
+    Id: number;
+    Name: string;
+    Type: number;
+    Status: number;
+    EndpointId: number;
+    Env?: Array<{ name: string; value: string }>;
+  }> {
+    try {
+      return await this.request<{
+        Id: number;
+        Name: string;
+        Type: number;
+        Status: number;
+        EndpointId: number;
+        Env?: Array<{ name: string; value: string }>;
+      }>(`/stacks/${stackId}`);
+    } catch (error) {
+      logger.error({ err: error, stackId }, 'Failed to get stack details');
+      throw error;
+    }
+  }
+
   // Helper methods
   private isArrApp(name: string): boolean {
     const arrApps = ['sonarr', 'radarr', 'prowlarr', 'lidarr', 'readarr', 'bazarr'];

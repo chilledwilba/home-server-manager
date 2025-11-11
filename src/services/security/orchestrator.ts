@@ -1,5 +1,8 @@
 import type Database from 'better-sqlite3';
 import type { Server as SocketServer } from 'socket.io';
+
+// Type for setInterval return value
+type IntervalId = ReturnType<typeof setInterval>;
 import { logger } from '../../utils/logger.js';
 import { CloudflareTunnelClient } from '../../integrations/cloudflare/tunnel-client.js';
 import { AuthentikClient } from '../../integrations/authentik/client.js';
@@ -53,7 +56,7 @@ export class SecurityOrchestrator {
   private authentik?: AuthentikClient;
   private fail2ban?: Fail2banClient;
   private infrastructure: InfrastructureManager;
-  private monitoringInterval?: NodeJS.Timeout;
+  private monitoringInterval?: IntervalId;
 
   constructor(
     private db: Database.Database,

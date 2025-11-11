@@ -580,7 +580,7 @@ Provide specific, actionable recommendations.`,
   }
 
   // Tool implementations
-  private async getSystemInfo() {
+  private async getSystemInfo(): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (!this.config.truenas) {
       return {
         content: [
@@ -603,7 +603,7 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async getSystemStats() {
+  private async getSystemStats(): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (!this.config.truenas) {
       return {
         content: [
@@ -676,7 +676,7 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async listContainers() {
+  private async listContainers(): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (!this.config.portainer) {
       return {
         content: [
@@ -1356,6 +1356,9 @@ async function main(): Promise<void> {
   await mcp.start();
 }
 
-if (require.main === module) {
+// Run if this is the main module
+// In ES modules, we check if import.meta.url matches the process argv
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
   void main();
 }

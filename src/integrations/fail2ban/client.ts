@@ -197,6 +197,7 @@ export class Fail2banClient {
   /**
    * Check if fail2ban is running
    */
+  async isRunning(): Promise<boolean> {
     try {
       await this.execCommand('ping');
       return true;

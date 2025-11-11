@@ -3,6 +3,7 @@ import type { SecurityScanner } from '../services/security/scanner.js';
 import type { DockerMonitor } from '../services/monitoring/docker-monitor.js';
 import type { SecurityOrchestrator } from '../services/security/orchestrator.js';
 import { createLogger } from '../utils/logger.js';
+import { validateIPAddress } from '../utils/validation.js';
 
 const logger = createLogger('security-routes');
 
@@ -237,6 +238,16 @@ export async function securityRoutes(
         };
       }
 
+      // Validate IP address format
+      const ipValidation = validateIPAddress(ip);
+      if (!ipValidation.valid) {
+        return {
+          success: false,
+          error: ipValidation.error,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
       const client = orchestrator.getFail2banClient();
       if (!client) {
         return {
@@ -284,6 +295,16 @@ export async function securityRoutes(
         return {
           success: false,
           error: 'IP address is required',
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      // Validate IP address format
+      const ipValidation = validateIPAddress(ip);
+      if (!ipValidation.valid) {
+        return {
+          success: false,
+          error: ipValidation.error,
           timestamp: new Date().toISOString(),
         };
       }
