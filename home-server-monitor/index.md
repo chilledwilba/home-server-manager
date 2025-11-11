@@ -18,7 +18,7 @@
 | **2** | TrueNAS + Predictions | 🟢 Complete | 2025-11-11 | API client, monitoring, ML disk prediction |
 | **3** | Docker + Optimization | 🟢 Complete | 2025-11-11 | Portainer, Arr Apps, Plex integration |
 | **4** | Security Baseline | 🟢 Complete | 2025-11-11 | Security scanner, vulnerability detection, findings tracking |
-| **5** | MCP Integration | 🔴 Not Started | - | Claude connection |
+| **5** | MCP Integration | 🟢 Complete | 2025-11-11 | MCP server, 13 tools, safety validation, Ollama integration |
 | **6** | ZFS + Backups | 🔴 Not Started | - | Snapshots + verification + network backup |
 | **7** | Arr + Queue Optimizer | 🔴 Not Started | - | Arr suite + download optimization |
 | **8** | Security Stack | 🔴 Not Started | - | Cloudflare/Auth + Plex security |
