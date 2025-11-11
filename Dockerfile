@@ -1,40 +1,47 @@
-# Multi-stage build for production
-FROM node:22-alpine AS base
+# Multi-stage build for Home Server Monitor
+FROM node:20-alpine AS builder
+
 WORKDIR /app
 
-# Dependencies stage
-FROM base AS deps
-COPY package.json package-lock.json ./
-RUN npm ci --only=production
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+COPY tsconfig.build.json ./
 
-# Build stage
-FROM base AS builder
-COPY package.json package-lock.json ./
+# Install dependencies
 RUN npm ci
-COPY . .
+
+# Copy source code
+COPY src ./src
+
+# Build TypeScript
 RUN npm run build
 
 # Production stage
-FROM base AS production
-ENV NODE_ENV=production
+FROM node:20-alpine
 
-# Create non-root user
-RUN addgroup -g 1001 nodejs && \
-    adduser -D -u 1001 -G nodejs nodejs
+WORKDIR /app
+
+# Install production dependencies only
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
 
 # Copy built application
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --chown=nodejs:nodejs package.json ./
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
 
-# Create data directory
-RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
+# Create data directory for SQLite
+RUN mkdir -p /app/data
 
-USER nodejs
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3100/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); })"
 
+# Expose port
 EXPOSE 3100
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3100/health || exit 1
+# Run as non-root user
+USER node
 
+# Start application
 CMD ["node", "dist/server.js"]

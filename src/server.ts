@@ -12,10 +12,14 @@ import { ArrClient, PlexClient } from './integrations/arr-apps/client.js';
 import { SecurityScanner } from './services/security/scanner.js';
 import { ZFSManager } from './services/zfs/manager.js';
 import { ZFSAssistant } from './services/zfs/assistant.js';
+import { NotificationService } from './services/alerting/notification-service.js';
+import { AutoRemediationService } from './services/remediation/auto-remediation.js';
 import { monitoringRoutes } from './routes/monitoring.js';
 import { dockerRoutes } from './routes/docker.js';
 import { securityRoutes } from './routes/security.js';
 import { zfsRoutes } from './routes/zfs.js';
+import { notificationRoutes } from './routes/notifications.js';
+import { remediationRoutes } from './routes/remediation.js';
 
 let monitor: TrueNASMonitor | null = null;
 let dockerMonitor: DockerMonitor | null = null;
@@ -119,9 +123,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
       logger.error({ err: error }, 'Failed to start TrueNAS monitoring');
     }
   } else {
-    logger.info(
-      'TrueNAS monitoring disabled (no API key configured or using mock credentials)',
-    );
+    logger.info('TrueNAS monitoring disabled (no API key configured or using mock credentials)');
   }
 
   // Initialize disk predictor
@@ -203,7 +205,9 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
       logger.error({ err: error }, 'Failed to start Docker monitoring');
     }
   } else {
-    logger.info('Docker monitoring disabled (no Portainer token configured or using mock credentials)');
+    logger.info(
+      'Docker monitoring disabled (no Portainer token configured or using mock credentials)',
+    );
   }
 
   // Initialize security scanner
@@ -231,12 +235,37 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
     logger.info('ZFS automation disabled (TrueNAS not configured)');
   }
 
-  // Make ZFS manager and assistant available to routes
-  (fastify as {zfsManager?: ZFSManager | null; zfsAssistant?: ZFSAssistant}).zfsManager = zfsManager;
-  (fastify as {zfsAssistant?: ZFSAssistant}).zfsAssistant = zfsAssistant;
+  // Initialize notification service
+  const notificationService = new NotificationService(db);
+  logger.info('Notification service initialized');
+
+  // Initialize auto-remediation service
+  const portainerForRemediation =
+    portainerHost && portainerToken && portainerToken !== 'mock-portainer-token-replace-on-deploy'
+      ? new PortainerClient({
+          host: portainerHost,
+          port: portainerPort,
+          token: portainerToken,
+          endpointId: 1,
+        })
+      : undefined;
+
+  const remediationService = new AutoRemediationService(db, portainerForRemediation);
+  logger.info('Auto-remediation service initialized');
+
+  // Make services available to routes
+  (fastify as { zfsManager?: ZFSManager | null; zfsAssistant?: ZFSAssistant }).zfsManager =
+    zfsManager;
+  (fastify as { zfsAssistant?: ZFSAssistant }).zfsAssistant = zfsAssistant;
+  (fastify as { notificationService?: NotificationService }).notificationService =
+    notificationService;
+  (fastify as { remediationService?: AutoRemediationService }).remediationService =
+    remediationService;
 
   // Register routes
-  await fastify.register(monitoringRoutes, { monitor: monitor!, predictor });
+  if (monitor) {
+    await fastify.register(monitoringRoutes, { monitor, predictor });
+  }
 
   if (dockerMonitor) {
     await fastify.register(dockerRoutes, { monitor: dockerMonitor });
@@ -244,6 +273,8 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
 
   await fastify.register(securityRoutes, { scanner: securityScanner, dockerMonitor });
   await fastify.register(zfsRoutes);
+  await fastify.register(notificationRoutes);
+  await fastify.register(remediationRoutes);
 
   // Health check endpoint
   fastify.get('/health', () => {
@@ -257,6 +288,8 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
         docker: dockerMonitor !== null,
         security: true,
         zfs: zfsManager !== null,
+        notifications: true,
+        remediation: true,
         database: true,
         socketio: true,
       },
@@ -276,6 +309,8 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
           docker: dockerMonitor !== null,
           security: true,
           zfs: zfsManager !== null,
+          notifications: true,
+          remediation: true,
           mcp: false,
         },
       },

@@ -177,6 +177,63 @@ export function initializeDatabase(db: Database.Database): void {
     )
   `);
 
+  // Arr health tracking
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS arr_health (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_name TEXT NOT NULL,
+      app_type TEXT NOT NULL,
+      version TEXT,
+      health_status TEXT,
+      issues_count INTEGER DEFAULT 0,
+      checked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Arr queue statistics
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS arr_queue_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_name TEXT NOT NULL,
+      total_items INTEGER DEFAULT 0,
+      downloading INTEGER DEFAULT 0,
+      failed INTEGER DEFAULT 0,
+      completed INTEGER DEFAULT 0,
+      total_size_gb REAL DEFAULT 0,
+      checked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Notification history
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      channel TEXT NOT NULL,
+      alert_id INTEGER,
+      status TEXT NOT NULL,
+      message TEXT NOT NULL,
+      sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      error TEXT,
+      FOREIGN KEY (alert_id) REFERENCES alerts(id)
+    )
+  `);
+
+  // Remediation actions
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS remediation_actions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      alert_id INTEGER NOT NULL,
+      action_type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      approved INTEGER DEFAULT 0,
+      approved_by TEXT,
+      executed_at DATETIME,
+      result TEXT,
+      error TEXT,
+      FOREIGN KEY (alert_id) REFERENCES alerts(id)
+    )
+  `);
+
   // Create indexes for performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);

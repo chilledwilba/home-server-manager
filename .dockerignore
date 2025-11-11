@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.md
+tests
+.husky
+.vscode
+coverage
+data
+*.log
+.DS_Store

@@ -25,6 +25,7 @@ export default [
         setInterval: 'readonly',
         clearTimeout: 'readonly',
         clearInterval: 'readonly',
+        fetch: 'readonly',
       },
     },
     plugins: {
@@ -48,8 +49,8 @@ export default [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'error',
       'prefer-const': 'error',
-      'curly': 'error',
-      'eqeqeq': 'error',
+      curly: 'error',
+      eqeqeq: 'error',
 
       // Prettier integration
       'prettier/prettier': 'error',
