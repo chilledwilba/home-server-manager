@@ -1,0 +1,134 @@
+import type Database from 'better-sqlite3';
+import { dbLogger as logger } from '../utils/logger.js';
+
+export function initializeDatabase(db: Database.Database): void {
+  logger.info('Initializing database schema...');
+
+  // System metrics table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS metrics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      cpu_percent REAL,
+      cpu_temp REAL,
+      ram_used_gb REAL,
+      ram_total_gb REAL,
+      ram_percent REAL,
+      network_rx_mbps REAL,
+      network_tx_mbps REAL,
+      arc_size_gb REAL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Pool metrics table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS pool_metrics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      pool_name TEXT NOT NULL,
+      pool_type TEXT,
+      status TEXT,
+      health TEXT,
+      used_bytes INTEGER,
+      total_bytes INTEGER,
+      percent_used REAL,
+      scrub_errors INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // SMART metrics table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS smart_metrics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      disk_name TEXT NOT NULL,
+      model TEXT,
+      temperature REAL,
+      power_on_hours INTEGER,
+      reallocated_sectors INTEGER,
+      pending_sectors INTEGER,
+      health_status TEXT,
+      load_cycle_count INTEGER,
+      spin_retry_count INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Container metrics table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS container_metrics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      container_id TEXT NOT NULL,
+      container_name TEXT NOT NULL,
+      state TEXT,
+      cpu_percent REAL,
+      memory_used_mb REAL,
+      memory_limit_mb REAL,
+      network_rx_mb REAL,
+      network_tx_mb REAL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Alerts table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS alerts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      message TEXT NOT NULL,
+      details TEXT,
+      triggered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      acknowledged INTEGER DEFAULT 0,
+      resolved INTEGER DEFAULT 0,
+      actionable INTEGER DEFAULT 0,
+      suggested_action TEXT
+    )
+  `);
+
+  // Disk failure predictions table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS disk_predictions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      disk_name TEXT NOT NULL,
+      prediction_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+      failure_probability REAL,
+      days_until_failure INTEGER,
+      confidence REAL,
+      contributing_factors TEXT,
+      recommended_action TEXT
+    )
+  `);
+
+  // Create indexes for performance
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_pool_metrics_timestamp ON pool_metrics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_smart_metrics_timestamp ON smart_metrics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_smart_metrics_disk ON smart_metrics(disk_name);
+    CREATE INDEX IF NOT EXISTS idx_container_metrics_timestamp ON container_metrics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity);
+    CREATE INDEX IF NOT EXISTS idx_disk_predictions_disk ON disk_predictions(disk_name);
+  `);
+
+  logger.info('Database schema initialized successfully');
+}
+
+export function cleanOldData(db: Database.Database, daysToKeep: number = 30): void {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+  const cutoff = cutoffDate.toISOString();
+
+  logger.info(`Cleaning data older than ${daysToKeep} days (${cutoff})`);
+
+  const tables = ['metrics', 'pool_metrics', 'smart_metrics', 'container_metrics'];
+
+  for (const table of tables) {
+    const stmt = db.prepare(`DELETE FROM ${table} WHERE timestamp < ?`);
+    const result = stmt.run(cutoff);
+    logger.info(`Deleted ${result.changes} old records from ${table}`);
+  }
+}
