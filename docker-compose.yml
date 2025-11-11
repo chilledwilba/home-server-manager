@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  home-server-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: home-server-monitor
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      - NODE_ENV=production
+      - PORT=3100
+      - HOST=0.0.0.0
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+networks:
+  monitoring:
+    driver: bridge
