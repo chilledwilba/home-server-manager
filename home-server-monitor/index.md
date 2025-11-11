@@ -19,7 +19,7 @@
 | **3** | Docker + Optimization | 🟢 Complete | 2025-11-11 | Portainer, Arr Apps, Plex integration |
 | **4** | Security Baseline | 🟢 Complete | 2025-11-11 | Security scanner, vulnerability detection, findings tracking |
 | **5** | MCP Integration | 🟢 Complete | 2025-11-11 | MCP server, 13 tools, safety validation, Ollama integration |
-| **6** | ZFS + Backups | 🔴 Not Started | - | Snapshots + verification + network backup |
+| **6** | ZFS + Backups | 🟢 Complete | 2025-11-11 | Snapshot automation, scrub scheduling, AI assistant, retention policies |
 | **7** | Arr + Queue Optimizer | 🔴 Not Started | - | Arr suite + download optimization |
 | **8** | Security Stack | 🔴 Not Started | - | Cloudflare/Auth + Plex security |
 | **9** | Smart Alerts | 🔴 Not Started | - | Notifications |
