@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  nginx-proxy-manager:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '81:81'
+    environment:
+      DB_SQLITE_FILE: "/data/database.sqlite"
+      DISABLE_IPV6: 'true'
+    volumes:
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+    networks:
+      - homeserver
+    labels:
+      - "com.homeserver.service=nginx-proxy-manager"
+      - "com.homeserver.managed=true"
+
+volumes:
+  npm-data:
+    driver: local
+  npm-letsencrypt:
+    driver: local
+
+networks:
+  homeserver:
+    external: true

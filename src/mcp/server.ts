@@ -12,6 +12,7 @@ import { createLogger } from '../utils/logger.js';
 import { TrueNASClient } from '../integrations/truenas/client.js';
 import { PortainerClient } from '../integrations/portainer/client.js';
 import { getDatabase } from '../db/connection.js';
+import { InfrastructureManager } from '../services/infrastructure/manager.js';
 import type Database from 'better-sqlite3';
 
 const logger = createLogger('mcp-server');
@@ -19,6 +20,7 @@ const logger = createLogger('mcp-server');
 interface MCPConfig {
   truenas?: TrueNASClient;
   portainer?: PortainerClient;
+  infrastructure: InfrastructureManager;
   db: Database.Database;
   requireConfirmation: boolean;
 }
@@ -242,6 +244,99 @@ export class HomeServerMCP {
               required: ['problem'],
             },
           },
+          {
+            name: 'analyze_infrastructure',
+            description: 'Analyze current infrastructure and get recommendations (Phase 8)',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            },
+          },
+          {
+            name: 'get_service_info',
+            description: 'Get detailed information about an infrastructure service',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                serviceName: {
+                  type: 'string',
+                  description: 'Name of the service (e.g., "Cloudflare Tunnel", "Traefik")',
+                },
+              },
+              required: ['serviceName'],
+            },
+          },
+          {
+            name: 'get_docker_compose',
+            description: 'Get docker-compose configuration for a service',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                serviceName: {
+                  type: 'string',
+                  description: 'Name of the service',
+                },
+                envVars: {
+                  type: 'object',
+                  description: 'Optional environment variables as key-value pairs',
+                },
+              },
+              required: ['serviceName'],
+            },
+          },
+          {
+            name: 'deploy_service',
+            description: 'Deploy an infrastructure service (requires confirmation)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                serviceName: {
+                  type: 'string',
+                  description: 'Name of the service to deploy',
+                },
+                stackName: {
+                  type: 'string',
+                  description: 'Optional custom stack name',
+                },
+                envVars: {
+                  type: 'object',
+                  description: 'Environment variables as key-value pairs',
+                },
+                autoStart: {
+                  type: 'boolean',
+                  description: 'Auto-start containers after deployment',
+                  default: true,
+                },
+              },
+              required: ['serviceName'],
+            },
+          },
+          {
+            name: 'remove_service',
+            description: 'Remove a deployed service (requires confirmation)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                serviceName: {
+                  type: 'string',
+                  description: 'Name of the service to remove',
+                },
+                reason: {
+                  type: 'string',
+                  description: 'Reason for removal',
+                },
+              },
+              required: ['serviceName', 'reason'],
+            },
+          },
+          {
+            name: 'get_security_status',
+            description: 'Get comprehensive security stack status (Phase 8)',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            },
+          },
         ],
       };
     });
@@ -278,6 +373,27 @@ export class HomeServerMCP {
             return await this.confirmAction(args as { actionId: string });
           case 'analyze_problem':
             return await this.analyzeProblem(args as { problem: string });
+          case 'analyze_infrastructure':
+            return await this.analyzeInfrastructure();
+          case 'get_service_info':
+            return await this.getServiceInfo(args as { serviceName: string });
+          case 'get_docker_compose':
+            return await this.getDockerCompose(
+              args as { serviceName: string; envVars?: Record<string, string> },
+            );
+          case 'deploy_service':
+            return await this.deployService(
+              args as {
+                serviceName: string;
+                stackName?: string;
+                envVars?: Record<string, string>;
+                autoStart?: boolean;
+              },
+            );
+          case 'remove_service':
+            return await this.removeService(args as { serviceName: string; reason: string });
+          case 'get_security_status':
+            return await this.getSecurityStatus();
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -789,6 +905,27 @@ Impact: Service will be unavailable for ~10-30 seconds`,
       const input = action.input as { containerId: string };
       await this.config.portainer.restartContainer(input.containerId);
       result = `Container ${input.containerId} restarted successfully`;
+    } else if (action.type === 'deploy_service') {
+      const input = action.input as {
+        serviceName: string;
+        stackName?: string;
+        envVars?: Record<string, string>;
+        autoStart?: boolean;
+      };
+      const deployResult = await this.config.infrastructure.deployService(input.serviceName, {
+        stackName: input.stackName,
+        envVars: input.envVars,
+        autoStart: input.autoStart,
+      });
+      result = deployResult.success
+        ? `✅ Service '${input.serviceName}' deployed successfully! Stack ID: ${deployResult.stackId}`
+        : `❌ Failed to deploy '${input.serviceName}': ${deployResult.error}`;
+    } else if (action.type === 'remove_service') {
+      const input = action.input as { serviceName: string };
+      const removeResult = await this.config.infrastructure.removeService(input.serviceName);
+      result = removeResult.success
+        ? `✅ Service '${input.serviceName}' removed successfully!`
+        : `❌ Failed to remove '${input.serviceName}': ${removeResult.error}`;
     } else {
       result = 'Unknown action type or service not configured';
     }
@@ -882,6 +1019,281 @@ Impact: Service will be unavailable for ~10-30 seconds`,
     };
   }
 
+  // === Infrastructure Management Tools (Phase 8) ===
+
+  private async analyzeInfrastructure() {
+    const analysis = await this.config.infrastructure.analyzeInfrastructure();
+
+    const summary = {
+      deployed: analysis.deployed.map((s) => ({
+        name: s.name,
+        type: s.type,
+        priority: s.priority,
+        deployed: true,
+      })),
+      recommended: analysis.recommended.map((s) => ({
+        name: s.name,
+        type: s.type,
+        priority: s.priority,
+        description: s.description,
+        reason: s.benefits?.join(', '),
+      })),
+      missing: analysis.missing.map((s) => ({
+        name: s.name,
+        type: s.type,
+        priority: s.priority,
+        description: s.description,
+      })),
+    };
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(summary, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async getServiceInfo(args: { serviceName: string }) {
+    const analysis = await this.config.infrastructure.analyzeInfrastructure();
+    const allServices = [...analysis.deployed, ...analysis.recommended, ...analysis.missing];
+
+    const service = allServices.find(
+      (s) => s.name.toLowerCase() === args.serviceName.toLowerCase(),
+    );
+
+    if (!service) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Service '${args.serviceName}' not found. Available services: ${allServices.map((s) => s.name).join(', ')}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(service, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async getDockerCompose(args: { serviceName: string; envVars?: Record<string, string> }) {
+    try {
+      const dockerCompose = await this.config.infrastructure.generateDockerCompose(
+        args.serviceName,
+        args.envVars,
+      );
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Docker Compose for ${args.serviceName}:\n\n\`\`\`yaml\n${dockerCompose}\n\`\`\``,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error generating docker-compose: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+      };
+    }
+  }
+
+  private async deployService(args: {
+    serviceName: string;
+    stackName?: string;
+    envVars?: Record<string, string>;
+    autoStart?: boolean;
+  }) {
+    if (this.config.requireConfirmation) {
+      const actionId = this.generateActionId();
+      this.pendingActions.set(actionId, {
+        type: 'deploy_service',
+        input: args,
+        timestamp: new Date(),
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `⚠️ DEPLOYMENT REQUIRES CONFIRMATION ⚠️
+
+Service: ${args.serviceName}
+Stack Name: ${args.stackName || args.serviceName.toLowerCase().replace(/\\s+/g, '-')}
+Auto-start: ${args.autoStart !== false ? 'Yes' : 'No'}
+Environment Variables: ${args.envVars ? Object.keys(args.envVars).length + ' provided' : 'None'}
+
+To confirm this deployment, use confirmation ID: ${actionId}
+
+This action will:
+1. Generate docker-compose configuration
+2. Deploy to Portainer
+3. ${args.autoStart !== false ? 'Start containers automatically' : 'Leave containers stopped'}
+
+Impact: New infrastructure component will be deployed`,
+          },
+        ],
+      };
+    }
+
+    const result = await this.config.infrastructure.deployService(args.serviceName, {
+      stackName: args.stackName,
+      envVars: args.envVars,
+      autoStart: args.autoStart,
+    });
+
+    if (result.success) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Service '${args.serviceName}' deployed successfully!\nStack ID: ${result.stackId}`,
+          },
+        ],
+      };
+    } else {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Failed to deploy '${args.serviceName}': ${result.error}`,
+          },
+        ],
+      };
+    }
+  }
+
+  private async removeService(args: { serviceName: string; reason: string }) {
+    if (this.config.requireConfirmation) {
+      const actionId = this.generateActionId();
+      this.pendingActions.set(actionId, {
+        type: 'remove_service',
+        input: args,
+        timestamp: new Date(),
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `⚠️ REMOVAL REQUIRES CONFIRMATION ⚠️
+
+Service: ${args.serviceName}
+Reason: ${args.reason}
+
+To confirm this removal, use confirmation ID: ${actionId}
+
+This action will:
+1. Stop all containers in the service
+2. Remove the Docker stack
+3. Mark as removed in database
+
+Impact: Service will be completely removed and unavailable`,
+          },
+        ],
+      };
+    }
+
+    const result = await this.config.infrastructure.removeService(args.serviceName);
+
+    if (result.success) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Service '${args.serviceName}' removed successfully!`,
+          },
+        ],
+      };
+    } else {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Failed to remove '${args.serviceName}': ${result.error}`,
+          },
+        ],
+      };
+    }
+  }
+
+  private async getSecurityStatus() {
+    const securityLog = this.config.db
+      .prepare(
+        `
+      SELECT * FROM security_status_log
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `,
+      )
+      .get() as
+      | {
+          timestamp: string;
+          overall_health: string;
+          tunnel_healthy: number;
+          auth_healthy: number;
+          fail2ban_healthy: number;
+          banned_ips_count: number;
+          active_sessions: number;
+        }
+      | undefined;
+
+    if (!securityLog) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'No security status available. Security orchestrator may not be configured or running.',
+          },
+        ],
+      };
+    }
+
+    const status = {
+      timestamp: securityLog.timestamp,
+      overall_health: securityLog.overall_health,
+      components: {
+        cloudflare_tunnel: {
+          healthy: securityLog.tunnel_healthy === 1,
+          status: securityLog.tunnel_healthy === 1 ? 'operational' : 'degraded',
+        },
+        authentik_sso: {
+          healthy: securityLog.auth_healthy === 1,
+          active_sessions: securityLog.active_sessions,
+          status: securityLog.auth_healthy === 1 ? 'operational' : 'degraded',
+        },
+        fail2ban: {
+          healthy: securityLog.fail2ban_healthy === 1,
+          banned_ips: securityLog.banned_ips_count,
+          status: securityLog.fail2ban_healthy === 1 ? 'operational' : 'degraded',
+        },
+      },
+    };
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(status, null, 2),
+        },
+      ],
+    };
+  }
+
   private generateActionId(): string {
     return Math.random().toString(36).substring(2, 15);
   }
@@ -930,9 +1342,13 @@ async function main(): Promise<void> {
     });
   }
 
+  // Initialize Infrastructure Manager (Phase 8)
+  const infrastructure = new InfrastructureManager(db);
+
   const mcp = new HomeServerMCP({
     truenas,
     portainer,
+    infrastructure,
     db,
     requireConfirmation: process.env['REQUIRE_CONFIRMATION'] !== 'false',
   });

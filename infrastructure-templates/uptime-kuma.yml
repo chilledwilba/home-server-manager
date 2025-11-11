@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+    networks:
+      - homeserver
+    labels:
+      - "com.homeserver.service=uptime-kuma"
+      - "com.homeserver.managed=true"
+
+volumes:
+  uptime-kuma-data:
+    driver: local
+
+networks:
+  homeserver:
+    external: true

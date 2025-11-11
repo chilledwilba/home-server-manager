@@ -19,6 +19,8 @@ import { ZFSAssistant } from './services/zfs/assistant.js';
 import { NotificationService } from './services/alerting/notification-service.js';
 import { AutoRemediationService } from './services/remediation/auto-remediation.js';
 import { ArrOptimizer } from './services/arr/arr-optimizer.js';
+import { SecurityOrchestrator } from './services/security/orchestrator.js';
+import { InfrastructureManager } from './services/infrastructure/manager.js';
 import { monitoringRoutes } from './routes/monitoring.js';
 import { dockerRoutes } from './routes/docker.js';
 import { securityRoutes } from './routes/security.js';
@@ -26,6 +28,7 @@ import { zfsRoutes } from './routes/zfs.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { remediationRoutes } from './routes/remediation.js';
 import { arrRoutes } from './routes/arr.js';
+import { infrastructureRoutes } from './routes/infrastructure.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +37,8 @@ let monitor: TrueNASMonitor | null = null;
 let dockerMonitor: DockerMonitor | null = null;
 let zfsManager: ZFSManager | null = null;
 let arrOptimizer: ArrOptimizer | null = null;
+let securityOrchestrator: SecurityOrchestrator | null = null;
+let infrastructureManager: InfrastructureManager | null = null;
 
 /**
  * Build and configure the Fastify server
@@ -249,6 +254,45 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   const securityScanner = new SecurityScanner(db, io);
   logger.info('Security scanner initialized');
 
+  // Initialize infrastructure manager
+  infrastructureManager = new InfrastructureManager(db);
+  logger.info('Infrastructure manager initialized');
+
+  // Initialize security orchestrator (Phase 8)
+  const securityConfig = {
+    cloudflare: process.env['CLOUDFLARE_API_TOKEN']
+      ? {
+          accountId: process.env['CLOUDFLARE_ACCOUNT_ID'] || '',
+          apiToken: process.env['CLOUDFLARE_API_TOKEN'],
+          tunnelId: process.env['CLOUDFLARE_TUNNEL_ID'],
+        }
+      : undefined,
+    authentik: process.env['AUTHENTIK_TOKEN']
+      ? {
+          url: process.env['AUTHENTIK_URL'] || '',
+          token: process.env['AUTHENTIK_TOKEN'],
+        }
+      : undefined,
+    fail2ban: process.env['FAIL2BAN_ENABLED'] === 'true'
+      ? {
+          containerName: process.env['FAIL2BAN_CONTAINER_NAME'],
+          useDocker: process.env['FAIL2BAN_USE_DOCKER'] === 'true',
+        }
+      : undefined,
+  };
+
+  if (securityConfig.cloudflare || securityConfig.authentik || securityConfig.fail2ban) {
+    securityOrchestrator = new SecurityOrchestrator(db, io, securityConfig);
+    securityOrchestrator.start();
+    logger.info({
+      cloudflare: !!securityConfig.cloudflare,
+      authentik: !!securityConfig.authentik,
+      fail2ban: !!securityConfig.fail2ban,
+    });
+  } else {
+    logger.info('Security orchestrator disabled (no security components configured)');
+  }
+
   // Initialize ZFS manager (if TrueNAS is configured)
   const zfsAssistant = new ZFSAssistant();
 
@@ -308,11 +352,20 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
     await fastify.register(dockerRoutes, { monitor: dockerMonitor });
   }
 
-  await fastify.register(securityRoutes, { scanner: securityScanner, dockerMonitor });
+  await fastify.register(securityRoutes, {
+    scanner: securityScanner,
+    dockerMonitor,
+    orchestrator: securityOrchestrator || undefined,
+  });
   await fastify.register(zfsRoutes);
   await fastify.register(notificationRoutes);
   await fastify.register(remediationRoutes);
   await fastify.register(arrRoutes);
+
+  // Register infrastructure routes (Phase 8)
+  if (infrastructureManager) {
+    await fastify.register(infrastructureRoutes, { manager: infrastructureManager });
+  }
 
   // Health check endpoint
   fastify.get('/health', () => {
@@ -329,6 +382,8 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
         notifications: true,
         remediation: true,
         arr: arrOptimizer !== null,
+        infrastructure: infrastructureManager !== null,
+        security_orchestrator: securityOrchestrator !== null,
         database: true,
         socketio: true,
       },
@@ -351,6 +406,8 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
           notifications: true,
           remediation: true,
           arr: arrOptimizer !== null,
+          infrastructure: infrastructureManager !== null,
+          security_orchestrator: securityOrchestrator !== null,
           mcp: false,
         },
       },
@@ -420,6 +477,9 @@ process.on('SIGINT', () => {
   if (arrOptimizer) {
     arrOptimizer.stop();
   }
+  if (securityOrchestrator) {
+    securityOrchestrator.stop();
+  }
   closeDatabase();
   process.exit(0);
 });
@@ -437,6 +497,9 @@ process.on('SIGTERM', () => {
   }
   if (arrOptimizer) {
     arrOptimizer.stop();
+  }
+  if (securityOrchestrator) {
+    securityOrchestrator.stop();
   }
   closeDatabase();
   process.exit(0);

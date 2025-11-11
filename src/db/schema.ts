@@ -286,6 +286,36 @@ export function initializeDatabase(db: Database.Database): void {
     )
   `);
 
+  // Infrastructure deployments tracking
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS infrastructure_deployments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      service_name TEXT NOT NULL,
+      service_type TEXT,
+      stack_id INTEGER,
+      deployed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      removed_at DATETIME,
+      status TEXT NOT NULL,
+      docker_compose TEXT,
+      env_vars TEXT,
+      deployed_by TEXT
+    )
+  `);
+
+  // Security status logging
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS security_status_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      overall_health TEXT NOT NULL,
+      tunnel_healthy INTEGER DEFAULT 0,
+      auth_healthy INTEGER DEFAULT 0,
+      fail2ban_healthy INTEGER DEFAULT 0,
+      banned_ips_count INTEGER DEFAULT 0,
+      active_sessions INTEGER DEFAULT 0
+    )
+  `);
+
   // Create indexes for performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
