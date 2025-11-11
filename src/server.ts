@@ -6,9 +6,14 @@ import { getDatabase, closeDatabase } from './db/connection.js';
 import { TrueNASClient } from './integrations/truenas/client.js';
 import { TrueNASMonitor } from './services/monitoring/truenas-monitor.js';
 import { DiskFailurePredictor } from './services/monitoring/disk-predictor.js';
+import { DockerMonitor } from './services/monitoring/docker-monitor.js';
+import { PortainerClient } from './integrations/portainer/client.js';
+import { ArrClient, PlexClient } from './integrations/arr-apps/client.js';
 import { monitoringRoutes } from './routes/monitoring.js';
+import { dockerRoutes } from './routes/docker.js';
 
 let monitor: TrueNASMonitor | null = null;
+let dockerMonitor: DockerMonitor | null = null;
 
 /**
  * Build and configure the Fastify server
@@ -54,6 +59,21 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
       logger.info(`Client ${socket.id} joined smart room`);
     });
 
+    socket.on('join:docker', () => {
+      void socket.join('docker');
+      logger.info(`Client ${socket.id} joined docker room`);
+    });
+
+    socket.on('join:arr', () => {
+      void socket.join('arr');
+      logger.info(`Client ${socket.id} joined arr room`);
+    });
+
+    socket.on('join:plex', () => {
+      void socket.join('plex');
+      logger.info(`Client ${socket.id} joined plex room`);
+    });
+
     socket.on('disconnect', () => {
       logger.info(`Client disconnected: ${socket.id}`);
     });
@@ -96,8 +116,91 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   // Initialize disk predictor
   const predictor = new DiskFailurePredictor(db);
 
+  // Initialize Docker monitoring (if configured)
+  const portainerHost = process.env['PORTAINER_HOST'];
+  const portainerPort = parseInt(process.env['PORTAINER_PORT'] || '9000', 10);
+  const portainerToken = process.env['PORTAINER_TOKEN'];
+
+  if (
+    portainerHost &&
+    portainerToken &&
+    portainerToken !== 'mock-portainer-token-replace-on-deploy'
+  ) {
+    try {
+      const portainer = new PortainerClient({
+        host: portainerHost,
+        port: portainerPort,
+        token: portainerToken,
+        endpointId: 1,
+      });
+
+      // Initialize Arr clients
+      const arrClients: ArrClient[] = [];
+
+      if (process.env['SONARR_API_KEY']) {
+        arrClients.push(
+          new ArrClient('Sonarr', {
+            host: process.env['SONARR_HOST'] || portainerHost,
+            port: parseInt(process.env['SONARR_PORT'] || '8989', 10),
+            apiKey: process.env['SONARR_API_KEY'],
+          }),
+        );
+      }
+
+      if (process.env['RADARR_API_KEY']) {
+        arrClients.push(
+          new ArrClient('Radarr', {
+            host: process.env['RADARR_HOST'] || portainerHost,
+            port: parseInt(process.env['RADARR_PORT'] || '7878', 10),
+            apiKey: process.env['RADARR_API_KEY'],
+          }),
+        );
+      }
+
+      if (process.env['PROWLARR_API_KEY']) {
+        arrClients.push(
+          new ArrClient('Prowlarr', {
+            host: process.env['PROWLARR_HOST'] || portainerHost,
+            port: parseInt(process.env['PROWLARR_PORT'] || '9696', 10),
+            apiKey: process.env['PROWLARR_API_KEY'],
+          }),
+        );
+      }
+
+      // Initialize Plex client if configured
+      let plexClient: PlexClient | undefined;
+      if (process.env['PLEX_TOKEN']) {
+        plexClient = new PlexClient({
+          host: process.env['PLEX_HOST'] || portainerHost,
+          port: parseInt(process.env['PLEX_PORT'] || '32400', 10),
+          token: process.env['PLEX_TOKEN'],
+        });
+      }
+
+      dockerMonitor = new DockerMonitor({
+        portainer,
+        arrClients,
+        plexClient,
+        db,
+        io,
+        interval: parseInt(process.env['POLL_DOCKER_INTERVAL'] || '5000', 10),
+      });
+
+      dockerMonitor.start();
+      logger.info('Docker monitoring started');
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to start Docker monitoring');
+    }
+  } else {
+    logger.info('Docker monitoring disabled (no Portainer token configured or using mock credentials)');
+  }
+
   // Register routes
   await fastify.register(monitoringRoutes, { monitor: monitor!, predictor });
+
+  if (dockerMonitor) {
+    await fastify.register(dockerRoutes, { monitor: dockerMonitor });
+  }
 
   // Health check endpoint
   fastify.get('/health', () => {
@@ -108,6 +211,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
       environment: process.env['NODE_ENV'],
       monitoring: {
         truenas: monitor !== null,
+        docker: dockerMonitor !== null,
         database: true,
         socketio: true,
       },
@@ -124,7 +228,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
         uptime: process.uptime(),
         monitoring: {
           truenas: monitor !== null,
-          docker: false,
+          docker: dockerMonitor !== null,
           mcp: false,
         },
       },
@@ -164,6 +268,9 @@ process.on('SIGINT', () => {
   if (monitor) {
     monitor.stop();
   }
+  if (dockerMonitor) {
+    dockerMonitor.stop();
+  }
   closeDatabase();
   process.exit(0);
 });
@@ -172,6 +279,9 @@ process.on('SIGTERM', () => {
   logger.info('Shutting down gracefully...');
   if (monitor) {
     monitor.stop();
+  }
+  if (dockerMonitor) {
+    dockerMonitor.stop();
   }
   closeDatabase();
   process.exit(0);
