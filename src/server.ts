@@ -10,12 +10,16 @@ import { DockerMonitor } from './services/monitoring/docker-monitor.js';
 import { PortainerClient } from './integrations/portainer/client.js';
 import { ArrClient, PlexClient } from './integrations/arr-apps/client.js';
 import { SecurityScanner } from './services/security/scanner.js';
+import { ZFSManager } from './services/zfs/manager.js';
+import { ZFSAssistant } from './services/zfs/assistant.js';
 import { monitoringRoutes } from './routes/monitoring.js';
 import { dockerRoutes } from './routes/docker.js';
 import { securityRoutes } from './routes/security.js';
+import { zfsRoutes } from './routes/zfs.js';
 
 let monitor: TrueNASMonitor | null = null;
 let dockerMonitor: DockerMonitor | null = null;
+let zfsManager: ZFSManager | null = null;
 
 /**
  * Build and configure the Fastify server
@@ -206,6 +210,31 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   const securityScanner = new SecurityScanner(db, io);
   logger.info('Security scanner initialized');
 
+  // Initialize ZFS manager (if TrueNAS is configured)
+  const zfsAssistant = new ZFSAssistant();
+
+  if (trueNASHost && trueNASKey && trueNASKey !== 'mock-truenas-api-key-replace-on-deploy') {
+    try {
+      const zfsClient = new TrueNASClient({
+        host: trueNASHost,
+        apiKey: trueNASKey,
+        timeout: 5000,
+      });
+
+      zfsManager = new ZFSManager(zfsClient, db);
+      zfsManager.start();
+      logger.info('ZFS automation started');
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to start ZFS automation');
+    }
+  } else {
+    logger.info('ZFS automation disabled (TrueNAS not configured)');
+  }
+
+  // Make ZFS manager and assistant available to routes
+  (fastify as {zfsManager?: ZFSManager | null; zfsAssistant?: ZFSAssistant}).zfsManager = zfsManager;
+  (fastify as {zfsAssistant?: ZFSAssistant}).zfsAssistant = zfsAssistant;
+
   // Register routes
   await fastify.register(monitoringRoutes, { monitor: monitor!, predictor });
 
@@ -214,6 +243,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   }
 
   await fastify.register(securityRoutes, { scanner: securityScanner, dockerMonitor });
+  await fastify.register(zfsRoutes);
 
   // Health check endpoint
   fastify.get('/health', () => {
@@ -226,6 +256,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
         truenas: monitor !== null,
         docker: dockerMonitor !== null,
         security: true,
+        zfs: zfsManager !== null,
         database: true,
         socketio: true,
       },
@@ -244,6 +275,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
           truenas: monitor !== null,
           docker: dockerMonitor !== null,
           security: true,
+          zfs: zfsManager !== null,
           mcp: false,
         },
       },
@@ -286,6 +318,9 @@ process.on('SIGINT', () => {
   if (dockerMonitor) {
     dockerMonitor.stop();
   }
+  if (zfsManager) {
+    zfsManager.stop();
+  }
   closeDatabase();
   process.exit(0);
 });
@@ -297,6 +332,9 @@ process.on('SIGTERM', () => {
   }
   if (dockerMonitor) {
     dockerMonitor.stop();
+  }
+  if (zfsManager) {
+    zfsManager.stop();
   }
   closeDatabase();
   process.exit(0);

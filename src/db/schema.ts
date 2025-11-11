@@ -119,6 +119,64 @@ export function initializeDatabase(db: Database.Database): void {
     )
   `);
 
+  // ZFS Snapshots table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pool_name TEXT NOT NULL,
+      snapshot_name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      reason TEXT,
+      size INTEGER DEFAULT 0,
+      verified INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      deleted_at DATETIME,
+      UNIQUE(pool_name, snapshot_name)
+    )
+  `);
+
+  // ZFS Scrub history table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS scrub_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pool_name TEXT NOT NULL,
+      started_at DATETIME NOT NULL,
+      completed_at DATETIME,
+      status TEXT,
+      errors_found INTEGER DEFAULT 0,
+      bytes_processed INTEGER DEFAULT 0,
+      duration_seconds INTEGER
+    )
+  `);
+
+  // Backup history table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS backup_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      target TEXT NOT NULL,
+      status TEXT NOT NULL,
+      error TEXT,
+      started_at DATETIME,
+      completed_at DATETIME,
+      size_bytes INTEGER,
+      files_transferred INTEGER
+    )
+  `);
+
+  // Maintenance history table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS maintenance_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pool_name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      completed_at DATETIME,
+      notes TEXT
+    )
+  `);
+
   // Create indexes for performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
@@ -130,6 +188,12 @@ export function initializeDatabase(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_disk_predictions_disk ON disk_predictions(disk_name);
     CREATE INDEX IF NOT EXISTS idx_security_findings_severity ON security_findings(severity);
     CREATE INDEX IF NOT EXISTS idx_security_findings_container ON security_findings(container);
+    CREATE INDEX IF NOT EXISTS idx_snapshots_pool ON snapshots(pool_name);
+    CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_at);
+    CREATE INDEX IF NOT EXISTS idx_scrub_pool ON scrub_history(pool_name);
+    CREATE INDEX IF NOT EXISTS idx_scrub_started ON scrub_history(started_at);
+    CREATE INDEX IF NOT EXISTS idx_backup_job ON backup_history(job_id);
+    CREATE INDEX IF NOT EXISTS idx_backup_started ON backup_history(started_at);
   `);
 
   logger.info('Database schema initialized successfully');
