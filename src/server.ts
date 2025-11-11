@@ -1,5 +1,8 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
 import { logger } from './utils/logger.js';
 import { getDatabase, closeDatabase } from './db/connection.js';
@@ -23,6 +26,9 @@ import { zfsRoutes } from './routes/zfs.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { remediationRoutes } from './routes/remediation.js';
 import { arrRoutes } from './routes/arr.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let monitor: TrueNASMonitor | null = null;
 let dockerMonitor: DockerMonitor | null = null;
@@ -351,6 +357,27 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
       timestamp: new Date().toISOString(),
     };
   });
+
+  // Serve static files in production
+  if (process.env['NODE_ENV'] === 'production') {
+    const clientPath = path.join(__dirname, '../dist/client');
+
+    await fastify.register(fastifyStatic, {
+      root: clientPath,
+      prefix: '/',
+    });
+
+    // SPA fallback for React Router
+    fastify.setNotFoundHandler((request, reply) => {
+      if (request.url.startsWith('/api') || request.url.startsWith('/health')) {
+        reply.status(404).send({ error: 'Not found' });
+      } else {
+        reply.sendFile('index.html');
+      }
+    });
+
+    logger.info({ clientPath }, 'Serving static files');
+  }
 
   return fastify;
 }
