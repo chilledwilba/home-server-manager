@@ -204,6 +204,58 @@ export function initializeDatabase(db: Database.Database): void {
     )
   `);
 
+  // Arr failed downloads tracking
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS arr_failed_downloads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_name TEXT NOT NULL,
+      title TEXT,
+      error_message TEXT,
+      failure_type TEXT,
+      suggested_action TEXT,
+      retried INTEGER DEFAULT 0,
+      resolved INTEGER DEFAULT 0,
+      failed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      resolved_at DATETIME
+    )
+  `);
+
+  // Arr disk usage tracking
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS arr_disk_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_name TEXT NOT NULL,
+      path TEXT NOT NULL,
+      label TEXT,
+      total_gb REAL,
+      free_gb REAL,
+      percent_used REAL,
+      checked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Arr performance metrics
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS arr_performance_metrics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_name TEXT NOT NULL,
+      success_rate REAL,
+      avg_queue_size REAL,
+      max_queue_size INTEGER,
+      calculated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Arr optimization history
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS arr_optimizations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_name TEXT NOT NULL,
+      optimizations TEXT,
+      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Notification history
   db.exec(`
     CREATE TABLE IF NOT EXISTS notifications (

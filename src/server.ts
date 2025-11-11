@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { Server } from 'socket.io';
 import { logger } from './utils/logger.js';
 import { getDatabase, closeDatabase } from './db/connection.js';
+import type Database from 'better-sqlite3';
 import { TrueNASClient } from './integrations/truenas/client.js';
 import { TrueNASMonitor } from './services/monitoring/truenas-monitor.js';
 import { DiskFailurePredictor } from './services/monitoring/disk-predictor.js';
@@ -14,16 +15,19 @@ import { ZFSManager } from './services/zfs/manager.js';
 import { ZFSAssistant } from './services/zfs/assistant.js';
 import { NotificationService } from './services/alerting/notification-service.js';
 import { AutoRemediationService } from './services/remediation/auto-remediation.js';
+import { ArrOptimizer } from './services/arr/arr-optimizer.js';
 import { monitoringRoutes } from './routes/monitoring.js';
 import { dockerRoutes } from './routes/docker.js';
 import { securityRoutes } from './routes/security.js';
 import { zfsRoutes } from './routes/zfs.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { remediationRoutes } from './routes/remediation.js';
+import { arrRoutes } from './routes/arr.js';
 
 let monitor: TrueNASMonitor | null = null;
 let dockerMonitor: DockerMonitor | null = null;
 let zfsManager: ZFSManager | null = null;
+let arrOptimizer: ArrOptimizer | null = null;
 
 /**
  * Build and configure the Fastify server
@@ -201,6 +205,31 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
 
       dockerMonitor.start();
       logger.info('Docker monitoring started');
+
+      // Initialize Arr optimizer if arr clients are configured
+      if (arrClients.length > 0) {
+        arrOptimizer = new ArrOptimizer(db, io);
+
+        // Register each arr client with optimizer
+        for (const arrClient of arrClients) {
+          let type: 'sonarr' | 'radarr' | 'prowlarr' | 'lidarr' | 'readarr' | 'bazarr' = 'sonarr';
+
+          if (arrClient.name.toLowerCase().includes('radarr')) {
+            type = 'radarr';
+          } else if (arrClient.name.toLowerCase().includes('prowlarr')) {
+            type = 'prowlarr';
+          }
+
+          arrOptimizer.registerApp({
+            name: arrClient.name,
+            client: arrClient,
+            type,
+          });
+        }
+
+        await arrOptimizer.start();
+        logger.info(`Arr optimizer started with ${arrClients.length} apps`);
+      }
     } catch (error) {
       logger.error({ err: error }, 'Failed to start Docker monitoring');
     }
@@ -261,6 +290,8 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
     notificationService;
   (fastify as { remediationService?: AutoRemediationService }).remediationService =
     remediationService;
+  (fastify as { arrOptimizer?: ArrOptimizer | null }).arrOptimizer = arrOptimizer;
+  (fastify as { db?: Database.Database }).db = db;
 
   // Register routes
   if (monitor) {
@@ -275,6 +306,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   await fastify.register(zfsRoutes);
   await fastify.register(notificationRoutes);
   await fastify.register(remediationRoutes);
+  await fastify.register(arrRoutes);
 
   // Health check endpoint
   fastify.get('/health', () => {
@@ -290,6 +322,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
         zfs: zfsManager !== null,
         notifications: true,
         remediation: true,
+        arr: arrOptimizer !== null,
         database: true,
         socketio: true,
       },
@@ -311,6 +344,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
           zfs: zfsManager !== null,
           notifications: true,
           remediation: true,
+          arr: arrOptimizer !== null,
           mcp: false,
         },
       },
@@ -356,6 +390,9 @@ process.on('SIGINT', () => {
   if (zfsManager) {
     zfsManager.stop();
   }
+  if (arrOptimizer) {
+    arrOptimizer.stop();
+  }
   closeDatabase();
   process.exit(0);
 });
@@ -370,6 +407,9 @@ process.on('SIGTERM', () => {
   }
   if (zfsManager) {
     zfsManager.stop();
+  }
+  if (arrOptimizer) {
+    arrOptimizer.stop();
   }
   closeDatabase();
   process.exit(0);
