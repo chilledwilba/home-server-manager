@@ -103,6 +103,22 @@ export function initializeDatabase(db: Database.Database): void {
     )
   `);
 
+  // Security findings table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS security_findings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      container TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      type TEXT NOT NULL,
+      message TEXT NOT NULL,
+      recommendation TEXT NOT NULL,
+      cve TEXT,
+      fixed INTEGER DEFAULT 0,
+      found_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      fixed_at DATETIME
+    )
+  `);
+
   // Create indexes for performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
@@ -112,6 +128,8 @@ export function initializeDatabase(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_container_metrics_timestamp ON container_metrics(timestamp);
     CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity);
     CREATE INDEX IF NOT EXISTS idx_disk_predictions_disk ON disk_predictions(disk_name);
+    CREATE INDEX IF NOT EXISTS idx_security_findings_severity ON security_findings(severity);
+    CREATE INDEX IF NOT EXISTS idx_security_findings_container ON security_findings(container);
   `);
 
   logger.info('Database schema initialized successfully');

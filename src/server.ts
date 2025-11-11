@@ -9,8 +9,10 @@ import { DiskFailurePredictor } from './services/monitoring/disk-predictor.js';
 import { DockerMonitor } from './services/monitoring/docker-monitor.js';
 import { PortainerClient } from './integrations/portainer/client.js';
 import { ArrClient, PlexClient } from './integrations/arr-apps/client.js';
+import { SecurityScanner } from './services/security/scanner.js';
 import { monitoringRoutes } from './routes/monitoring.js';
 import { dockerRoutes } from './routes/docker.js';
+import { securityRoutes } from './routes/security.js';
 
 let monitor: TrueNASMonitor | null = null;
 let dockerMonitor: DockerMonitor | null = null;
@@ -72,6 +74,11 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
     socket.on('join:plex', () => {
       void socket.join('plex');
       logger.info(`Client ${socket.id} joined plex room`);
+    });
+
+    socket.on('join:security', () => {
+      void socket.join('security');
+      logger.info(`Client ${socket.id} joined security room`);
     });
 
     socket.on('disconnect', () => {
@@ -195,12 +202,18 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
     logger.info('Docker monitoring disabled (no Portainer token configured or using mock credentials)');
   }
 
+  // Initialize security scanner
+  const securityScanner = new SecurityScanner(db, io);
+  logger.info('Security scanner initialized');
+
   // Register routes
   await fastify.register(monitoringRoutes, { monitor: monitor!, predictor });
 
   if (dockerMonitor) {
     await fastify.register(dockerRoutes, { monitor: dockerMonitor });
   }
+
+  await fastify.register(securityRoutes, { scanner: securityScanner, dockerMonitor });
 
   // Health check endpoint
   fastify.get('/health', () => {
@@ -212,6 +225,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
       monitoring: {
         truenas: monitor !== null,
         docker: dockerMonitor !== null,
+        security: true,
         database: true,
         socketio: true,
       },
@@ -229,6 +243,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
         monitoring: {
           truenas: monitor !== null,
           docker: dockerMonitor !== null,
+          security: true,
           mcp: false,
         },
       },
