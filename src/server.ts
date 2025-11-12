@@ -1,11 +1,13 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
+import caching from '@fastify/caching';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
 import { logger } from './utils/logger.js';
 import { getDatabase, closeDatabase } from './db/connection.js';
+import { register, httpRequestDuration, httpRequestCounter } from './utils/metrics.js';
 import type Database from 'better-sqlite3';
 import { TrueNASClient } from './integrations/truenas/client.js';
 import { TrueNASMonitor } from './services/monitoring/truenas-monitor.js';
@@ -52,6 +54,12 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   // Register CORS
   await fastify.register(cors, {
     origin: true,
+  });
+
+  // Register caching (for expensive API endpoints)
+  await fastify.register(caching, {
+    privacy: 'private',
+    expiresIn: 30, // 30 seconds default
   });
 
   // Initialize database
@@ -368,13 +376,56 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
     await fastify.register(infrastructureRoutes, { manager: infrastructureManager });
   }
 
-  // Health check endpoint
-  fastify.get('/health', () => {
-    return {
-      status: 'healthy',
+  // Enhanced health check endpoint with actual connectivity tests
+  fastify.get('/health', async (request, reply) => {
+    const checks = {
+      server: true,
+      database: false,
+      truenas: false,
+      portainer: false,
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env['NODE_ENV'],
+    };
+
+    // Database check
+    try {
+      db.prepare('SELECT 1').get();
+      checks.database = true;
+    } catch (error) {
+      logger.error('Database health check failed', error);
+    }
+
+    // TrueNAS check (if monitor is initialized)
+    if (monitor) {
+      try {
+        const pools = await monitor.getPools();
+        checks.truenas = Array.isArray(pools);
+      } catch (error) {
+        logger.error('TrueNAS health check failed', error);
+      }
+    } else {
+      checks.truenas = true; // Skip if not configured
+    }
+
+    // Portainer check (if docker monitor is initialized)
+    if (dockerMonitor) {
+      try {
+        const containers = await dockerMonitor.getContainers();
+        checks.portainer = Array.isArray(containers);
+      } catch (error) {
+        logger.error('Portainer health check failed', error);
+      }
+    } else {
+      checks.portainer = true; // Skip if not configured
+    }
+
+    // Overall health
+    const healthy = checks.database && checks.truenas && checks.portainer;
+
+    return reply.code(healthy ? 200 : 503).send({
+      status: healthy ? 'healthy' : 'degraded',
+      checks,
       monitoring: {
         truenas: monitor !== null,
         docker: dockerMonitor !== null,
@@ -388,7 +439,52 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
         database: true,
         socketio: true,
       },
+    });
+  });
+
+  // Readiness check (for Kubernetes)
+  fastify.get('/ready', () => {
+    return {
+      ready: true,
+      timestamp: new Date().toISOString(),
     };
+  });
+
+  // Liveness check
+  fastify.get('/live', () => {
+    return {
+      alive: true,
+      timestamp: new Date().toISOString(),
+    };
+  });
+
+  // Prometheus metrics endpoint
+  fastify.get('/metrics', async (request, reply) => {
+    reply.header('Content-Type', register.contentType);
+    return register.metrics();
+  });
+
+  // Request duration tracking hooks
+  fastify.addHook('onRequest', (request, _reply, done) => {
+    interface RequestWithTime extends FastifyRequest {
+      startTime?: number;
+    }
+    (request as RequestWithTime).startTime = Date.now();
+    done();
+  });
+
+  fastify.addHook('onResponse', (request, reply, done) => {
+    interface RequestWithTime extends FastifyRequest {
+      startTime?: number;
+    }
+    const duration = (Date.now() - ((request as RequestWithTime).startTime || Date.now())) / 1000;
+    const route = request.routerPath || 'unknown';
+    const statusCode = String(reply.statusCode);
+
+    httpRequestDuration.labels(request.method, route, statusCode).observe(duration);
+
+    httpRequestCounter.labels(request.method, route, statusCode).inc();
+    done();
   });
 
   // System info endpoint
