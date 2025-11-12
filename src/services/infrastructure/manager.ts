@@ -168,8 +168,11 @@ export class InfrastructureManager {
             deployed.push(service);
           }
         }
-      } catch {
-        logger.warn('Could not fetch Portainer stacks - Portainer may not be available');
+      } catch (error) {
+        logger.warn(
+          { err: error },
+          'Could not fetch Portainer stacks - Portainer may not be available',
+        );
       }
     }
 
@@ -279,7 +282,8 @@ export class InfrastructureManager {
 
     try {
       template = await fs.readFile(templatePath, 'utf-8');
-    } catch {
+    } catch (error) {
+      logger.error({ err: error, templatePath }, 'Failed to read docker-compose template');
       throw new Error(`Template not found: ${service.dockerCompose}`);
     }
 

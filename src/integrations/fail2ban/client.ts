@@ -198,6 +198,7 @@ export class Fail2banClient {
       await this.execCommand('ping');
       return true;
     } catch {
+      // Expected - service is not running
       return false;
     }
   }

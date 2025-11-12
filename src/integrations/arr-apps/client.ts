@@ -259,7 +259,8 @@ export class ArrClient {
           monitored: item.monitored,
         })),
       };
-    } catch {
+    } catch (error) {
+      logger.error({ err: error }, `Failed to get calendar for ${this.name}`);
       return { app: this.name, items: [] };
     }
   }
@@ -311,7 +312,8 @@ export class PlexClient {
         version: data.version,
         name: data.machineIdentifier,
       };
-    } catch {
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to get Plex status');
       return { online: false };
     }
   }
@@ -361,7 +363,8 @@ export class PlexClient {
         active: data.MediaContainer?.size || 0,
         sessions,
       };
-    } catch {
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to get Plex sessions');
       return { active: 0, sessions: [] };
     }
   }

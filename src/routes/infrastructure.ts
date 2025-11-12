@@ -108,7 +108,8 @@ export async function infrastructureRoutes(
       if (env) {
         try {
           envVars = JSON.parse(env) as Record<string, string>;
-        } catch {
+        } catch (error) {
+          logger.error({ err: error, env }, 'Failed to parse environment variables JSON');
           return {
             success: false,
             error: 'Invalid environment variables JSON',

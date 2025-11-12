@@ -89,6 +89,19 @@ export class PortainerClient {
     }
   }
 
+  /**
+   * Retrieves all Docker containers from the Portainer endpoint
+   *
+   * @returns Array of container information including status, ports, and labels
+   * @throws {Error} If the Portainer API request fails
+   *
+   * @example
+   * ```typescript
+   * const containers = await client.getContainers();
+   * console.log(containers[0].name); // 'plex'
+   * console.log(containers[0].state); // 'running'
+   * ```
+   */
   async getContainers(): Promise<ContainerInfo[]> {
     const containers = await this.request<
       Array<{
@@ -129,6 +142,20 @@ export class PortainerClient {
     }));
   }
 
+  /**
+   * Retrieves real-time resource usage statistics for a specific container
+   *
+   * @param containerId - The Docker container ID
+   * @returns Container statistics including CPU, memory, network, and I/O metrics
+   * @throws {Error} If the container doesn't exist or API request fails
+   *
+   * @example
+   * ```typescript
+   * const stats = await client.getContainerStats('abc123');
+   * console.log(`CPU: ${stats.cpu.percentage}%`);
+   * console.log(`Memory: ${stats.memory.percentage}%`);
+   * ```
+   */
   async getContainerStats(containerId: string): Promise<ContainerStats> {
     const stats = await this.request<{
       cpu_stats: {
@@ -205,6 +232,20 @@ export class PortainerClient {
     };
   }
 
+  /**
+   * Retrieves recent log entries from a container
+   *
+   * @param containerId - The Docker container ID
+   * @param lines - Number of log lines to retrieve (default: 100)
+   * @returns Array of log lines with Docker prefix removed
+   * @throws {Error} If the container doesn't exist or API request fails
+   *
+   * @example
+   * ```typescript
+   * const logs = await client.getContainerLogs('abc123', 50);
+   * logs.forEach(line => console.log(line));
+   * ```
+   */
   async getContainerLogs(containerId: string, lines: number = 100): Promise<string[]> {
     const response = await fetch(
       `${this.baseUrl}/endpoints/${this.endpointId}/docker/containers/${containerId}/logs?stdout=true&stderr=true&tail=${lines}`,
@@ -221,7 +262,19 @@ export class PortainerClient {
     return cleanedLogs;
   }
 
-  // Container actions (when write mode is enabled)
+  /**
+   * Restarts a Docker container
+   *
+   * @param containerId - The Docker container ID to restart
+   * @returns True if restart was initiated successfully
+   * @throws {Error} If write operations are disabled or API request fails
+   *
+   * @example
+   * ```typescript
+   * await client.restartContainer('abc123');
+   * console.log('Container restarted');
+   * ```
+   */
   async restartContainer(containerId: string): Promise<boolean> {
     if (!this.isWriteEnabled()) {
       throw new Error('Write operations are disabled');
