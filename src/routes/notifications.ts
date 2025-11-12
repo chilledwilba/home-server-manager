@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 /**
  * Notification routes
  */
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function notificationRoutes(fastify: FastifyInstance): Promise<void> {
   // Get notification history
   fastify.get('/api/notifications/history', async () => {

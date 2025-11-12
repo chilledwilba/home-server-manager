@@ -152,12 +152,11 @@ export class PortainerClient {
     }>(`/endpoints/${this.endpointId}/docker/containers/${containerId}/stats?stream=false`);
 
     // Calculate CPU percentage
-    const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+    const cpuDelta =
+      stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
     const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
     const cpuPercent =
-      systemDelta > 0
-        ? (cpuDelta / systemDelta) * 100 * stats.cpu_stats.online_cpus
-        : 0;
+      systemDelta > 0 ? (cpuDelta / systemDelta) * 100 * stats.cpu_stats.online_cpus : 0;
 
     // Calculate memory
     const memoryUsed = stats.memory_stats.usage - (stats.memory_stats.stats?.cache || 0);

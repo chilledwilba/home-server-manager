@@ -76,9 +76,7 @@ export class SafetyCheck {
     // Check for critical service impact
     if (context.container) {
       const containerLower = context.container.toLowerCase();
-      const isCritical = this.CRITICAL_SERVICES.some((service) =>
-        containerLower.includes(service),
-      );
+      const isCritical = this.CRITICAL_SERVICES.some((service) => containerLower.includes(service));
 
       if (isCritical) {
         if (action.includes('stop') || action.includes('restart') || action.includes('remove')) {

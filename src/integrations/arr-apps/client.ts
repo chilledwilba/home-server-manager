@@ -179,7 +179,8 @@ export class ArrClient {
       label: disk.label,
       freeSpace: disk.freeSpace,
       totalSpace: disk.totalSpace,
-      percentUsed: disk.totalSpace > 0 ? ((disk.totalSpace - disk.freeSpace) / disk.totalSpace) * 100 : 0,
+      percentUsed:
+        disk.totalSpace > 0 ? ((disk.totalSpace - disk.freeSpace) / disk.totalSpace) * 100 : 0,
     }));
   }
 

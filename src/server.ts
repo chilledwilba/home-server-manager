@@ -273,12 +273,13 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
           token: process.env['AUTHENTIK_TOKEN'],
         }
       : undefined,
-    fail2ban: process.env['FAIL2BAN_ENABLED'] === 'true'
-      ? {
-          containerName: process.env['FAIL2BAN_CONTAINER_NAME'],
-          useDocker: process.env['FAIL2BAN_USE_DOCKER'] === 'true',
-        }
-      : undefined,
+    fail2ban:
+      process.env['FAIL2BAN_ENABLED'] === 'true'
+        ? {
+            containerName: process.env['FAIL2BAN_CONTAINER_NAME'],
+            useDocker: process.env['FAIL2BAN_USE_DOCKER'] === 'true',
+          }
+        : undefined,
   };
 
   if (securityConfig.cloudflare || securityConfig.authentik || securityConfig.fail2ban) {

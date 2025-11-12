@@ -26,6 +26,9 @@ export default [
         clearTimeout: 'readonly',
         clearInterval: 'readonly',
         fetch: 'readonly',
+        AbortController: 'readonly',
+        RequestInit: 'readonly',
+        NodeJS: 'readonly',
       },
     },
     plugins: {

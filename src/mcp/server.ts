@@ -57,7 +57,7 @@ export class HomeServerMCP {
   }
 
   private setupErrorHandlers(): void {
-    this.server.onerror = (error) => {
+    this.server.onerror = (error): void => {
       logger.error({ err: error }, 'MCP server error');
     };
 
@@ -626,7 +626,9 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async getPoolStatus(args: { poolName?: string }) {
+  private async getPoolStatus(args: {
+    poolName?: string;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (!this.config.truenas) {
       return {
         content: [
@@ -653,7 +655,9 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async getDiskSmart(args: { diskName: string }) {
+  private async getDiskSmart(args: {
+    diskName: string;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (!this.config.truenas) {
       return {
         content: [
@@ -699,7 +703,10 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async getContainerLogs(args: { containerId: string; lines?: number }) {
+  private async getContainerLogs(args: {
+    containerId: string;
+    lines?: number;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (!this.config.portainer) {
       return {
         content: [
@@ -722,7 +729,9 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async getContainerStats(args: { containerId: string }) {
+  private async getContainerStats(args: {
+    containerId: string;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (!this.config.portainer) {
       return {
         content: [
@@ -745,7 +754,10 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async getRecentAlerts(args: { severity?: string }) {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  private async getRecentAlerts(args: {
+    severity?: string;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     let query = `
       SELECT * FROM alerts
       WHERE resolved = 0
@@ -771,7 +783,11 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async getMetricsHistory(args: { metric: string; hours?: number }) {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  private async getMetricsHistory(args: {
+    metric: string;
+    hours?: number;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     const hours = args.hours || 24;
     const query = `
       SELECT timestamp, cpu_percent, ram_used_gb, network_rx_mbps, network_tx_mbps
@@ -791,7 +807,8 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async getSecurityFindings() {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  private async getSecurityFindings(): Promise<{ content: Array<{ type: string; text: string }> }> {
     const findings = this.config.db
       .prepare(
         `
@@ -818,7 +835,10 @@ Provide specific, actionable recommendations.`,
     };
   }
 
-  private async restartContainer(args: { containerId: string; reason: string }) {
+  private async restartContainer(args: {
+    containerId: string;
+    reason: string;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (!this.config.portainer) {
       return {
         content: [
@@ -871,7 +891,9 @@ Impact: Service will be unavailable for ~10-30 seconds`,
     };
   }
 
-  private async confirmAction(args: { actionId: string }) {
+  private async confirmAction(args: {
+    actionId: string;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     const action = this.pendingActions.get(args.actionId);
 
     if (!action) {
@@ -941,30 +963,30 @@ Impact: Service will be unavailable for ~10-30 seconds`,
     };
   }
 
-  private async analyzeProblem(args: { problem: string }) {
+  private async analyzeProblem(args: {
+    problem: string;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     // Gather relevant data
-    const [containers, alerts, recentMetrics] = await Promise.all([
-      this.config.portainer ? this.config.portainer.getContainers() : [],
-      this.config.db
-        .prepare(
-          `
+    const containers = this.config.portainer ? await this.config.portainer.getContainers() : [];
+    const alerts = this.config.db
+      .prepare(
+        `
         SELECT * FROM alerts
         WHERE resolved = 0
         ORDER BY triggered_at DESC
         LIMIT 10
       `,
-        )
-        .all(),
-      this.config.db
-        .prepare(
-          `
+      )
+      .all();
+    const recentMetrics = this.config.db
+      .prepare(
+        `
         SELECT * FROM metrics
         WHERE timestamp > datetime('now', '-1 hour')
         ORDER BY timestamp DESC
       `,
-        )
-        .all() as Array<{ cpu_percent: number; ram_used_gb: number }>,
-    ]);
+      )
+      .all() as Array<{ cpu_percent: number; ram_used_gb: number }>;
 
     const system = this.config.truenas ? await this.config.truenas.getSystemStats() : null;
 
@@ -1021,7 +1043,9 @@ Impact: Service will be unavailable for ~10-30 seconds`,
 
   // === Infrastructure Management Tools (Phase 8) ===
 
-  private async analyzeInfrastructure() {
+  private async analyzeInfrastructure(): Promise<{
+    content: Array<{ type: string; text: string }>;
+  }> {
     const analysis = await this.config.infrastructure.analyzeInfrastructure();
 
     const summary = {
@@ -1056,7 +1080,9 @@ Impact: Service will be unavailable for ~10-30 seconds`,
     };
   }
 
-  private async getServiceInfo(args: { serviceName: string }) {
+  private async getServiceInfo(args: {
+    serviceName: string;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     const analysis = await this.config.infrastructure.analyzeInfrastructure();
     const allServices = [...analysis.deployed, ...analysis.recommended, ...analysis.missing];
 
@@ -1085,7 +1111,10 @@ Impact: Service will be unavailable for ~10-30 seconds`,
     };
   }
 
-  private async getDockerCompose(args: { serviceName: string; envVars?: Record<string, string> }) {
+  private async getDockerCompose(args: {
+    serviceName: string;
+    envVars?: Record<string, string>;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     try {
       const dockerCompose = await this.config.infrastructure.generateDockerCompose(
         args.serviceName,
@@ -1117,7 +1146,7 @@ Impact: Service will be unavailable for ~10-30 seconds`,
     stackName?: string;
     envVars?: Record<string, string>;
     autoStart?: boolean;
-  }) {
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (this.config.requireConfirmation) {
       const actionId = this.generateActionId();
       this.pendingActions.set(actionId, {
@@ -1177,7 +1206,10 @@ Impact: New infrastructure component will be deployed`,
     }
   }
 
-  private async removeService(args: { serviceName: string; reason: string }) {
+  private async removeService(args: {
+    serviceName: string;
+    reason: string;
+  }): Promise<{ content: Array<{ type: string; text: string }> }> {
     if (this.config.requireConfirmation) {
       const actionId = this.generateActionId();
       this.pendingActions.set(actionId, {
@@ -1231,7 +1263,8 @@ Impact: Service will be completely removed and unavailable`,
     }
   }
 
-  private async getSecurityStatus() {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  private async getSecurityStatus(): Promise<{ content: Array<{ type: string; text: string }> }> {
     const securityLog = this.config.db
       .prepare(
         `

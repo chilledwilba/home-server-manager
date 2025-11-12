@@ -4,6 +4,7 @@ import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('infrastructure-routes');
 
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function infrastructureRoutes(
   fastify: FastifyInstance,
   options: {
@@ -277,7 +278,7 @@ export async function infrastructureRoutes(
         };
       }
 
-      const validation = await manager.validateDeployment(serviceName);
+      const validation = manager.validateDeployment(serviceName);
 
       return {
         success: true,

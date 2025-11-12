@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { DockerMonitor } from '../services/monitoring/docker-monitor.js';
 
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function dockerRoutes(
   fastify: FastifyInstance,
   options: {

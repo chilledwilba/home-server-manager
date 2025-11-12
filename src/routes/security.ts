@@ -7,6 +7,7 @@ import { validateIPAddress } from '../utils/validation.js';
 
 const logger = createLogger('security-routes');
 
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function securityRoutes(
   fastify: FastifyInstance,
   options: {

@@ -53,10 +53,7 @@ export class AuthentikClient {
   /**
    * Make authenticated API request
    */
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.config.token}`,
@@ -162,9 +159,7 @@ export class AuthentikClient {
    */
   async getActiveSessions(): Promise<AuthentikSession[]> {
     try {
-      const response = await this.request<{ results: AuthentikSession[] }>(
-        '/core/sessions/',
-      );
+      const response = await this.request<{ results: AuthentikSession[] }>('/core/sessions/');
       return response.results;
     } catch (error) {
       logger.error({ err: error }, 'Failed to get active sessions');

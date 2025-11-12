@@ -38,15 +38,12 @@ export class CloudflareTunnelClient {
    */
   async listTunnels(): Promise<Tunnel[]> {
     try {
-      const response = await fetch(
-        `${this.baseUrl}/accounts/${this.config.accountId}/cfd_tunnel`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.config.apiToken}`,
-            'Content-Type': 'application/json',
-          },
+      const response = await fetch(`${this.baseUrl}/accounts/${this.config.accountId}/cfd_tunnel`, {
+        headers: {
+          Authorization: `Bearer ${this.config.apiToken}`,
+          'Content-Type': 'application/json',
         },
-      );
+      });
 
       if (!response.ok) {
         throw new Error(`Failed to list tunnels: ${response.statusText}`);
@@ -116,9 +113,7 @@ export class CloudflareTunnelClient {
   async isHealthy(tunnelId?: string): Promise<boolean> {
     try {
       const tunnel = await this.getTunnel(tunnelId);
-      return (
-        tunnel.status === 'active' && tunnel.connections && tunnel.connections.length > 0
-      );
+      return tunnel.status === 'active' && tunnel.connections && tunnel.connections.length > 0;
     } catch (error) {
       logger.error({ err: error }, 'Failed to check tunnel health');
       return false;

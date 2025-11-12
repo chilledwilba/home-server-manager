@@ -29,10 +29,11 @@ const DiagnoseIssueSchema = z.object({
  * ZFS Routes
  * API endpoints for snapshot management, scrub history, and ZFS assistance
  */
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
   // Get snapshot statistics
   fastify.get('/api/zfs/snapshots/stats', async () => {
-    const zfsManager = (fastify as {zfsManager?: {getSnapshotStats: () => unknown}}).zfsManager;
+    const zfsManager = (fastify as { zfsManager?: { getSnapshotStats: () => unknown } }).zfsManager;
 
     if (!zfsManager) {
       return { success: false, error: 'ZFS manager not initialized' };
@@ -51,7 +52,13 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
       },
     },
     async (request) => {
-      const zfsManager = (fastify as {zfsManager?: {createManualSnapshot: (poolName: string, reason: string) => Promise<unknown>}}).zfsManager;
+      const zfsManager = (
+        fastify as {
+          zfsManager?: {
+            createManualSnapshot: (poolName: string, reason: string) => Promise<unknown>;
+          };
+        }
+      ).zfsManager;
 
       if (!zfsManager) {
         return { success: false, error: 'ZFS manager not initialized' };
@@ -65,7 +72,9 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Get scrub history
   fastify.get('/api/zfs/scrubs/history', async (request) => {
-    const zfsManager = (fastify as {zfsManager?: {getScrubHistory: (poolName?: string) => unknown}}).zfsManager;
+    const zfsManager = (
+      fastify as { zfsManager?: { getScrubHistory: (poolName?: string) => unknown } }
+    ).zfsManager;
 
     if (!zfsManager) {
       return { success: false, error: 'ZFS manager not initialized' };
@@ -78,7 +87,9 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Get backup history
   fastify.get('/api/zfs/backups/history', async () => {
-    const zfsManager = (fastify as {zfsManager?: {getBackupHistory: (limit?: number) => unknown}}).zfsManager;
+    const zfsManager = (
+      fastify as { zfsManager?: { getBackupHistory: (limit?: number) => unknown } }
+    ).zfsManager;
 
     if (!zfsManager) {
       return { success: false, error: 'ZFS manager not initialized' };
@@ -90,7 +101,8 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Get ZFS recommendations
   fastify.get('/api/zfs/recommendations', async () => {
-    const zfsManager = (fastify as {zfsManager?: {getRecommendations: () => unknown}}).zfsManager;
+    const zfsManager = (fastify as { zfsManager?: { getRecommendations: () => unknown } })
+      .zfsManager;
 
     if (!zfsManager) {
       return { success: false, error: 'ZFS manager not initialized' };
@@ -109,7 +121,9 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
       },
     },
     async (request) => {
-      const zfsAssistant = (fastify as {zfsAssistant?: {explainConcept: (concept: string) => string}}).zfsAssistant;
+      const zfsAssistant = (
+        fastify as { zfsAssistant?: { explainConcept: (concept: string) => string } }
+      ).zfsAssistant;
 
       if (!zfsAssistant) {
         return { success: false, error: 'ZFS assistant not initialized' };
@@ -123,7 +137,11 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Get pool recommendations
   fastify.get('/api/zfs/pool-recommendations/:poolName', async (request) => {
-    const zfsAssistant = (fastify as {zfsAssistant?: {getPoolRecommendations: (poolConfig: {name: string}) => string[]}}).zfsAssistant;
+    const zfsAssistant = (
+      fastify as {
+        zfsAssistant?: { getPoolRecommendations: (poolConfig: { name: string }) => string[] };
+      }
+    ).zfsAssistant;
 
     if (!zfsAssistant) {
       return { success: false, error: 'ZFS assistant not initialized' };
@@ -147,15 +165,23 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
       },
     },
     async (request) => {
-      const zfsAssistant = (fastify as {zfsAssistant?: {diagnoseIssue: (issue: string, poolData: unknown, systemData: unknown) => Promise<string>}}).zfsAssistant;
+      const zfsAssistant = (
+        fastify as {
+          zfsAssistant?: {
+            diagnoseIssue: (
+              issue: string,
+              poolData: unknown,
+              systemData: unknown,
+            ) => Promise<string>;
+          };
+        }
+      ).zfsAssistant;
 
       if (!zfsAssistant) {
         return { success: false, error: 'ZFS assistant not initialized' };
       }
 
-      const { issue, poolData, systemData } = request.body as z.infer<
-        typeof DiagnoseIssueSchema
-      >;
+      const { issue, poolData, systemData } = request.body as z.infer<typeof DiagnoseIssueSchema>;
       const diagnosis = await zfsAssistant.diagnoseIssue(issue, poolData, systemData);
       return { success: true, data: { diagnosis }, timestamp: new Date().toISOString() };
     },
@@ -163,7 +189,8 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Get best practices
   fastify.get('/api/zfs/best-practices', async () => {
-    const zfsAssistant = (fastify as {zfsAssistant?: {getBestPractices: () => unknown}}).zfsAssistant;
+    const zfsAssistant = (fastify as { zfsAssistant?: { getBestPractices: () => unknown } })
+      .zfsAssistant;
 
     if (!zfsAssistant) {
       return { success: false, error: 'ZFS assistant not initialized' };

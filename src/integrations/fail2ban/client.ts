@@ -77,7 +77,8 @@ export class Fail2banClient {
 
       // Parse jail list
       const jailMatch = output.match(/Jail list:\s+(.+)/);
-      const jailNames = jailMatch && jailMatch[1] ? jailMatch[1].split(',').map((j) => j.trim()) : [];
+      const jailNames =
+        jailMatch && jailMatch[1] ? jailMatch[1].split(',').map((j) => j.trim()) : [];
 
       // Get details for each jail
       const jails: JailStatus[] = [];
@@ -114,22 +115,17 @@ export class Fail2banClient {
       const output = await this.execCommand(`status ${jailName}`);
 
       // Parse output
-      const currentlyFailed = parseInt(
-        output.match(/Currently failed:\s+(\d+)/)?.[1] || '0',
-        10,
-      );
+      const currentlyFailed = parseInt(output.match(/Currently failed:\s+(\d+)/)?.[1] || '0', 10);
       const totalFailed = parseInt(output.match(/Total failed:\s+(\d+)/)?.[1] || '0', 10);
-      const currentlyBanned = parseInt(
-        output.match(/Currently banned:\s+(\d+)/)?.[1] || '0',
-        10,
-      );
+      const currentlyBanned = parseInt(output.match(/Currently banned:\s+(\d+)/)?.[1] || '0', 10);
       const totalBanned = parseInt(output.match(/Total banned:\s+(\d+)/)?.[1] || '0', 10);
 
       // Parse banned IPs
       const bannedMatch = output.match(/Banned IP list:\s+(.+)/);
-      const bannedIPs = bannedMatch && bannedMatch[1]
-        ? bannedMatch[1].split(' ').filter((ip) => ip && ip !== 'none')
-        : [];
+      const bannedIPs =
+        bannedMatch && bannedMatch[1]
+          ? bannedMatch[1].split(' ').filter((ip) => ip && ip !== 'none')
+          : [];
 
       return {
         name: jailName,

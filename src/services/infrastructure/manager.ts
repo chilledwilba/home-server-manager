@@ -6,7 +6,7 @@ import {
   validateEnvVars,
   sanitizeDockerCompose,
 } from '../../utils/validation.js';
-import { PortainerClient } from '../../integrations/portainer/client.js';
+import type { PortainerClient } from '../../integrations/portainer/client.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -296,7 +296,10 @@ export class InfrastructureManager {
   /**
    * Validate deployment readiness
    */
-  validateDeployment(serviceName: string, envVars?: Record<string, string>): {
+  validateDeployment(
+    serviceName: string,
+    envVars?: Record<string, string>,
+  ): {
     ready: boolean;
     missing: string[];
     warnings: string[];
@@ -428,7 +431,8 @@ export class InfrastructureManager {
       if (!this.portainer) {
         return {
           success: false,
-          error: "Portainer not configured. Set PORTAINER_HOST, PORTAINER_PORT, and PORTAINER_TOKEN to enable automated deployment.",
+          error:
+            'Portainer not configured. Set PORTAINER_HOST, PORTAINER_PORT, and PORTAINER_TOKEN to enable automated deployment.',
         };
       }
 

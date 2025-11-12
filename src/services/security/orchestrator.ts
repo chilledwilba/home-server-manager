@@ -87,12 +87,9 @@ export class SecurityOrchestrator {
     logger.info('Starting security orchestrator...');
 
     // Monitor security status every minute
-    this.monitoringInterval = setInterval(
-      () => {
-        void this.checkSecurityStatus();
-      },
-      60 * 1000,
-    );
+    this.monitoringInterval = setInterval(() => {
+      void this.checkSecurityStatus();
+    }, 60 * 1000);
 
     // Initial check
     void this.checkSecurityStatus();
@@ -312,11 +309,14 @@ export class SecurityOrchestrator {
 
       // Log warnings if degraded
       if (status.overall_health !== 'healthy') {
-        logger.warn({
-          tunnel: status.tunnel.healthy,
-          auth: status.authentication.healthy,
-          fail2ban: status.intrusion_prevention.healthy,
-        }, 'Security health degraded');
+        logger.warn(
+          {
+            tunnel: status.tunnel.healthy,
+            auth: status.authentication.healthy,
+            fail2ban: status.intrusion_prevention.healthy,
+          },
+          'Security health degraded',
+        );
       }
     } catch (error) {
       logger.error({ err: error }, 'Failed to check security status');

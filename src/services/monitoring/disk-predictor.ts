@@ -50,9 +50,7 @@ export class DiskFailurePredictor {
     let riskScore = 0;
 
     // Factor 1: Reallocated sectors (CRITICAL)
-    const reallocatedTrend = this.analyzeTrend(
-      historicalData.map((d) => d.reallocated_sectors),
-    );
+    const reallocatedTrend = this.analyzeTrend(historicalData.map((d) => d.reallocated_sectors));
     if (reallocatedTrend.current > 0) {
       riskScore += 40;
       factors.push(
@@ -116,10 +114,7 @@ export class DiskFailurePredictor {
 
     // Determine confidence level
     const dataPointsCount = historicalData.length;
-    const confidence = Math.min(
-      100,
-      (dataPointsCount / 30) * 100 * (factors.length > 0 ? 1 : 0.5),
-    );
+    const confidence = Math.min(100, (dataPointsCount / 30) * 100 * (factors.length > 0 ? 1 : 0.5));
 
     // Recommended action
     let recommendedAction = 'Continue regular monitoring';
@@ -127,8 +122,7 @@ export class DiskFailurePredictor {
       recommendedAction =
         'URGENT: Order replacement drive immediately. Plan data migration within 1 week.';
     } else if (failureProbability > 40) {
-      recommendedAction =
-        'Order replacement drive as precaution. Increase backup frequency.';
+      recommendedAction = 'Order replacement drive as precaution. Increase backup frequency.';
     } else if (failureProbability > 20) {
       recommendedAction = 'Monitor closely. Verify backups are current.';
     }

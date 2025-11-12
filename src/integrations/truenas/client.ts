@@ -245,7 +245,7 @@ export class TrueNASClient {
         spinRetryCount: smart.spin_retry_count?.raw_value,
       };
     } catch (error) {
-      logger.warn(`Could not get SMART data for ${diskName}`);
+      logger.warn({ error }, `Could not get SMART data for ${diskName}`);
       return null;
     }
   }

@@ -60,9 +60,7 @@ export class SecurityScanner {
       timestamp: new Date().toISOString(),
     });
 
-    logger.info(
-      `Security scan complete: ${findings.length} findings, score: ${score}/100`,
-    );
+    logger.info(`Security scan complete: ${findings.length} findings, score: ${score}/100`);
 
     return { findings, score };
   }
@@ -78,8 +76,7 @@ export class SecurityScanner {
         severity: 'medium',
         type: 'root_user',
         message: 'Container may be running as root user',
-        recommendation:
-          'Set PUID and PGID environment variables to non-root user (e.g., 1000)',
+        recommendation: 'Set PUID and PGID environment variables to non-root user (e.g., 1000)',
         fixed: false,
       });
     }
@@ -165,8 +162,7 @@ export class SecurityScanner {
           severity: 'high',
           type: 'no_auth',
           message: 'No authentication configured on media management app',
-          recommendation:
-            'Enable authentication in Settings > General > Security > Authentication',
+          recommendation: 'Enable authentication in Settings > General > Security > Authentication',
           fixed: false,
         });
       }
@@ -181,8 +177,7 @@ export class SecurityScanner {
           severity: 'medium',
           type: 'plex_exposed',
           message: 'Plex port 32400 is exposed',
-          recommendation:
-            'Disable remote access or use Plex relay. Access via local network only.',
+          recommendation: 'Disable remote access or use Plex relay. Access via local network only.',
           fixed: false,
         });
       }

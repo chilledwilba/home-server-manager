@@ -9,6 +9,7 @@ const ApproveActionSchema = z.object({
 /**
  * Auto-remediation routes
  */
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function remediationRoutes(fastify: FastifyInstance): Promise<void> {
   // Get pending approvals
   fastify.get('/api/remediation/pending', async () => {

@@ -1,7 +1,8 @@
 import type Database from 'better-sqlite3';
 import type { Server as SocketServer } from 'socket.io';
-import { PortainerClient, type ContainerStats } from '../../integrations/portainer/client.js';
-import { ArrClient, PlexClient } from '../../integrations/arr-apps/client.js';
+import type { PortainerClient } from '../../integrations/portainer/client.js';
+import { type ContainerStats } from '../../integrations/portainer/client.js';
+import type { ArrClient, PlexClient } from '../../integrations/arr-apps/client.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('docker-monitor');

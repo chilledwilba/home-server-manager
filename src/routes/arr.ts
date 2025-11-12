@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
  * Arr Suite Optimizer Routes
  * API endpoints for arr app monitoring and optimization
  */
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
   const arrOptimizer = (
     fastify as { arrOptimizer?: { getOptimizationSuggestions: (app: string) => string[] } }

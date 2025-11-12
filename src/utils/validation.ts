@@ -47,7 +47,8 @@ export function validateStackName(name: string): { valid: boolean; error?: strin
   if (!validPattern.test(name)) {
     return {
       valid: false,
-      error: 'Stack name must start with a letter and contain only letters, numbers, dashes, and underscores',
+      error:
+        'Stack name must start with a letter and contain only letters, numbers, dashes, and underscores',
     };
   }
 
@@ -73,7 +74,8 @@ export function validateEnvVarName(name: string): { valid: boolean; error?: stri
   if (!validPattern.test(name)) {
     return {
       valid: false,
-      error: 'Environment variable name must start with uppercase letter and contain only uppercase letters, numbers, and underscores',
+      error:
+        'Environment variable name must start with uppercase letter and contain only uppercase letters, numbers, and underscores',
     };
   }
 
@@ -166,7 +168,8 @@ export function sanitizeDockerCompose(content: string): { valid: boolean; error?
     if (pattern.test(content)) {
       return {
         valid: false,
-        error: 'Docker compose content contains suspicious patterns that may indicate injection attempts',
+        error:
+          'Docker compose content contains suspicious patterns that may indicate injection attempts',
       };
     }
   }
@@ -186,9 +189,10 @@ export function sanitizeDockerCompose(content: string): { valid: boolean; error?
 /**
  * Validate environment variables object
  */
-export function validateEnvVars(
-  envVars: Record<string, string>,
-): { valid: boolean; errors: string[] } {
+export function validateEnvVars(envVars: Record<string, string>): {
+  valid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   if (typeof envVars !== 'object' || envVars === null || Array.isArray(envVars)) {

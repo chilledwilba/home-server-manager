@@ -1,5 +1,5 @@
 import { createLogger } from '../../utils/logger.js';
-import { TrueNASClient } from '../../integrations/truenas/client.js';
+import type { TrueNASClient } from '../../integrations/truenas/client.js';
 import type Database from 'better-sqlite3';
 
 const logger = createLogger('zfs-manager');
@@ -20,8 +20,8 @@ interface SnapshotPolicy {
 interface ScrubSchedule {
   poolName: string;
   frequency: 'weekly' | 'monthly';
-  dayOfWeek: number;  // 0-6, Sunday = 0
-  hour: number;       // 0-23
+  dayOfWeek: number; // 0-6, Sunday = 0
+  hour: number; // 0-23
   type: 'scrub' | 'trim';
 }
 
@@ -54,10 +54,10 @@ export class ZFSManager {
       enabled: true,
       frequency: 'hourly',
       retention: {
-        hourly: 48,    // Keep 2 days of hourly
-        daily: 14,     // Keep 2 weeks of daily
-        weekly: 8,     // Keep 2 months of weekly
-        monthly: 12,   // Keep 1 year of monthly
+        hourly: 48, // Keep 2 days of hourly
+        daily: 14, // Keep 2 weeks of daily
+        weekly: 8, // Keep 2 months of weekly
+        monthly: 12, // Keep 1 year of monthly
       },
       prefix: 'auto',
     });
@@ -99,7 +99,7 @@ export class ZFSManager {
     this.scrubSchedules.set('personal', {
       poolName: 'personal',
       frequency: 'weekly',
-      dayOfWeek: 0,  // Sunday
+      dayOfWeek: 0, // Sunday
       hour: 2,
       type: 'scrub',
     });
@@ -147,9 +147,12 @@ export class ZFSManager {
     }
 
     // Start scrub scheduler (check every hour)
-    const scrubTimer = setInterval(async () => {
-      await this.checkAndRunScrubs();
-    }, 60 * 60 * 1000);  // Check hourly
+    const scrubTimer = setInterval(
+      async () => {
+        await this.checkAndRunScrubs();
+      },
+      60 * 60 * 1000,
+    ); // Check hourly
 
     this.intervals.set('scrub-check', scrubTimer);
   }
@@ -172,13 +175,7 @@ export class ZFSManager {
         ) VALUES (?, ?, ?, ?, ?)
       `);
 
-      stmt.run(
-        poolName,
-        snapshotName,
-        policy.frequency,
-        0,
-        new Date().toISOString(),
-      );
+      stmt.run(poolName, snapshotName, policy.frequency, 0, new Date().toISOString());
 
       logger.info(`Snapshot created: ${snapshotName}`);
     } catch (error) {
@@ -201,10 +198,15 @@ export class ZFSManager {
         ORDER BY created_at DESC
       `,
         )
-        .all(poolName) as Array<{ id: number; snapshot_name: string; type: string; created_at: string }>;
+        .all(poolName) as Array<{
+        id: number;
+        snapshot_name: string;
+        type: string;
+        created_at: string;
+      }>;
 
       // Group by frequency type
-      const grouped: Record<string, Array<typeof snapshots[0]>> = {
+      const grouped: Record<string, Array<(typeof snapshots)[0]>> = {
         hourly: [],
         daily: [],
         weekly: [],
@@ -512,12 +514,7 @@ export class ZFSManager {
   /**
    * Create alert
    */
-  private createAlert(
-    type: string,
-    severity: string,
-    pool: string,
-    error: unknown,
-  ): void {
+  private createAlert(type: string, severity: string, pool: string, error: unknown): void {
     try {
       const stmt = this.db.prepare(`
         INSERT INTO alerts (type, severity, message, details, triggered_at)
