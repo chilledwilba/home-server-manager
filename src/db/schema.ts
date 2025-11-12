@@ -316,6 +316,33 @@ export function initializeDatabase(db: Database.Database): void {
     )
   `);
 
+  // UPS metrics
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ups_metrics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      on_battery INTEGER DEFAULT 0,
+      battery_charge REAL,
+      battery_runtime INTEGER,
+      input_voltage REAL,
+      output_voltage REAL,
+      load REAL,
+      status TEXT
+    )
+  `);
+
+  // UPS events (power outages, restorations, shutdowns)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ups_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      battery_percent REAL,
+      runtime_remaining INTEGER,
+      details TEXT
+    )
+  `);
+
   // Create indexes for performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
@@ -358,6 +385,10 @@ export function initializeDatabase(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_infrastructure_service ON infrastructure_deployments(service_name);
     CREATE INDEX IF NOT EXISTS idx_infrastructure_status ON infrastructure_deployments(status);
     CREATE INDEX IF NOT EXISTS idx_security_log_timestamp ON security_status_log(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_ups_metrics_timestamp ON ups_metrics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_ups_metrics_battery ON ups_metrics(on_battery);
+    CREATE INDEX IF NOT EXISTS idx_ups_events_timestamp ON ups_events(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_ups_events_type ON ups_events(event_type);
   `);
 
   logger.info('Database schema initialized successfully');
@@ -370,7 +401,7 @@ export function cleanOldData(db: Database.Database, daysToKeep: number = 30): vo
 
   logger.info(`Cleaning data older than ${daysToKeep} days (${cutoff})`);
 
-  const tables = ['metrics', 'pool_metrics', 'smart_metrics', 'container_metrics'];
+  const tables = ['metrics', 'pool_metrics', 'smart_metrics', 'container_metrics', 'ups_metrics'];
 
   for (const table of tables) {
     const stmt = db.prepare(`DELETE FROM ${table} WHERE timestamp < ?`);

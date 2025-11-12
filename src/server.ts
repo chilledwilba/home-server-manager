@@ -341,6 +341,60 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   const remediationService = new AutoRemediationService(db, portainerForRemediation);
   logger.info('Auto-remediation service initialized');
 
+  // Initialize UPS monitoring (if enabled - Phase 6)
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  type NUTClientType = (typeof import('./integrations/ups/nut-client.js'))['NUTClient'];
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  type UPSMonitorType = (typeof import('./services/ups/ups-monitor.js'))['UPSMonitor'];
+  let upsClient: InstanceType<NUTClientType> | null = null;
+  let upsMonitor: InstanceType<UPSMonitorType> | null = null;
+
+  const upsEnabled = process.env['UPS_ENABLED'] === 'true';
+  if (upsEnabled) {
+    try {
+      const { NUTClient } = await import('./integrations/ups/nut-client.js');
+      const { UPSMonitor } = await import('./services/ups/ups-monitor.js');
+
+      upsClient = new NUTClient({
+        host: process.env['UPS_HOST'] || 'localhost',
+        port: parseInt(process.env['UPS_PORT'] || '3493', 10),
+        upsName: process.env['UPS_NAME'] || 'ups',
+        timeout: 5000,
+      });
+
+      // Test UPS availability
+      const available = await upsClient.isAvailable();
+      if (!available) {
+        logger.warn('UPS configured but not available - continuing without UPS monitoring');
+        upsClient = null;
+      } else {
+        // Initialize UPS monitor
+        upsMonitor = new UPSMonitor({
+          client: upsClient,
+          db,
+          io,
+          intervals: {
+            polling: 30000, // 30 seconds normal
+            onBattery: 10000, // 10 seconds on battery
+          },
+          thresholds: {
+            criticalRuntime: parseInt(process.env['UPS_CRITICAL_RUNTIME'] || '600', 10),
+            warningRuntime: parseInt(process.env['UPS_WARNING_RUNTIME'] || '1800', 10),
+            lowBattery: parseInt(process.env['UPS_LOW_BATTERY'] || '25', 10),
+          },
+          enableShutdown: process.env['UPS_ENABLE_SHUTDOWN'] === 'true',
+        });
+
+        upsMonitor.start();
+        logger.info('UPS monitoring started successfully');
+      }
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to initialize UPS monitoring');
+    }
+  } else {
+    logger.info('UPS monitoring disabled');
+  }
+
   // Make services available to routes
   (fastify as { zfsManager?: ZFSManager | null; zfsAssistant?: ZFSAssistant }).zfsManager =
     zfsManager;
@@ -374,6 +428,13 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   // Register infrastructure routes (Phase 8)
   if (infrastructureManager) {
     await fastify.register(infrastructureRoutes, { manager: infrastructureManager });
+  }
+
+  // Register UPS routes (Phase 6)
+  if (upsClient) {
+    const { upsRoutes } = await import('./routes/ups.js');
+    await fastify.register(upsRoutes, { client: upsClient, monitor: upsMonitor || undefined });
+    logger.info('UPS routes registered');
   }
 
   // Enhanced health check endpoint with actual connectivity tests
