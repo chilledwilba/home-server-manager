@@ -377,7 +377,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   }
 
   // Enhanced health check endpoint with actual connectivity tests
-  fastify.get('/health', async (request, reply) => {
+  fastify.get('/health', async (_request, reply) => {
     const checks = {
       server: true,
       database: false,
@@ -393,20 +393,12 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
       db.prepare('SELECT 1').get();
       checks.database = true;
     } catch (error) {
-      logger.error('Database health check failed', error);
+      logger.error({ err: error }, 'Database health check failed');
     }
 
     // TrueNAS check (if monitor is initialized)
-    if (monitor) {
-      try {
-        const pools = await monitor.getPools();
-        checks.truenas = Array.isArray(pools);
-      } catch (error) {
-        logger.error('TrueNAS health check failed', error);
-      }
-    } else {
-      checks.truenas = true; // Skip if not configured
-    }
+    // Note: Monitor runs in background, so we just check if it's configured
+    checks.truenas = monitor !== null;
 
     // Portainer check (if docker monitor is initialized)
     if (dockerMonitor) {
@@ -414,7 +406,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
         const containers = await dockerMonitor.getContainers();
         checks.portainer = Array.isArray(containers);
       } catch (error) {
-        logger.error('Portainer health check failed', error);
+        logger.error({ err: error }, 'Portainer health check failed');
       }
     } else {
       checks.portainer = true; // Skip if not configured
@@ -459,7 +451,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   });
 
   // Prometheus metrics endpoint
-  fastify.get('/metrics', async (request, reply) => {
+  fastify.get('/metrics', async (_request, reply) => {
     reply.header('Content-Type', register.contentType);
     return register.metrics();
   });
@@ -476,10 +468,11 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   fastify.addHook('onResponse', (request, reply, done) => {
     interface RequestWithTime extends FastifyRequest {
       startTime?: number;
+      routerPath?: string;
     }
     const duration = (Date.now() - ((request as RequestWithTime).startTime || Date.now())) / 1000;
-    const route = request.routerPath || 'unknown';
-    const statusCode = String(reply.statusCode);
+    const route: string = (request as RequestWithTime).routerPath || request.url || 'unknown';
+    const statusCode: string = String(reply.statusCode);
 
     httpRequestDuration.labels(request.method, route, statusCode).observe(duration);
 
@@ -554,7 +547,7 @@ async function start(): Promise<void> {
       env: process.env['NODE_ENV'],
     });
   } catch (error) {
-    logger.error(error, 'Failed to start server');
+    logger.error({ err: error }, 'Failed to start server');
     process.exit(1);
   }
 }

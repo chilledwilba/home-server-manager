@@ -14,10 +14,13 @@ export async function verifyApiKey(request: FastifyRequest, reply: FastifyReply)
   const apiKey = request.headers['x-api-key'] as string | undefined;
 
   if (!apiKey) {
-    logger.warn('API request without API key', {
-      path: request.url,
-      ip: request.ip,
-    });
+    logger.warn(
+      {
+        path: request.url,
+        ip: request.ip,
+      },
+      'API request without API key',
+    );
 
     reply.code(401).send({
       error: 'Unauthorized',
@@ -31,18 +34,24 @@ export async function verifyApiKey(request: FastifyRequest, reply: FastifyReply)
 
   if (validKeys.length === 0) {
     // If no API keys configured, log warning but allow request
-    logger.warn('No API keys configured in environment', {
-      path: request.url,
-    });
+    logger.warn(
+      {
+        path: request.url,
+      },
+      'No API keys configured in environment',
+    );
     return;
   }
 
   if (!validKeys.includes(apiKey)) {
-    logger.warn('Invalid API key attempt', {
-      path: request.url,
-      ip: request.ip,
-      providedKey: apiKey.substring(0, 8) + '...', // Log partial key for debugging
-    });
+    logger.warn(
+      {
+        path: request.url,
+        ip: request.ip,
+        providedKey: apiKey.substring(0, 8) + '...', // Log partial key for debugging
+      },
+      'Invalid API key attempt',
+    );
 
     reply.code(401).send({
       error: 'Unauthorized',
@@ -52,9 +61,12 @@ export async function verifyApiKey(request: FastifyRequest, reply: FastifyReply)
   }
 
   // API key is valid
-  logger.debug('API key verified', {
-    path: request.url,
-  });
+  logger.debug(
+    {
+      path: request.url,
+    },
+    'API key verified',
+  );
 }
 
 /**
@@ -73,9 +85,12 @@ export async function verifyAdmin(request: FastifyRequest, reply: FastifyReply):
   const adminKey = process.env['ADMIN_API_KEY'];
 
   if (!adminKey) {
-    logger.warn('No admin API key configured', {
-      path: request.url,
-    });
+    logger.warn(
+      {
+        path: request.url,
+      },
+      'No admin API key configured',
+    );
     // If no admin key is set, allow request (development mode)
     return;
   }
@@ -83,10 +98,13 @@ export async function verifyAdmin(request: FastifyRequest, reply: FastifyReply):
   const providedKey = request.headers['x-api-key'] as string | undefined;
 
   if (providedKey !== adminKey) {
-    logger.warn('Non-admin user attempted admin action', {
-      path: request.url,
-      ip: request.ip,
-    });
+    logger.warn(
+      {
+        path: request.url,
+        ip: request.ip,
+      },
+      'Non-admin user attempted admin action',
+    );
 
     reply.code(403).send({
       error: 'Forbidden',
@@ -95,9 +113,12 @@ export async function verifyAdmin(request: FastifyRequest, reply: FastifyReply):
     return;
   }
 
-  logger.debug('Admin permissions verified', {
-    path: request.url,
-  });
+  logger.debug(
+    {
+      path: request.url,
+    },
+    'Admin permissions verified',
+  );
 }
 
 /**
@@ -130,11 +151,14 @@ export async function checkRateLimit(
   }
 
   if (record.count >= options.maxRequests) {
-    logger.warn('Rate limit exceeded', {
-      ip: identifier,
-      path: request.url,
-      count: record.count,
-    });
+    logger.warn(
+      {
+        ip: identifier,
+        path: request.url,
+        count: record.count,
+      },
+      'Rate limit exceeded',
+    );
 
     reply.code(429).send({
       error: 'Too Many Requests',
@@ -173,11 +197,14 @@ export async function validateOrigin(request: FastifyRequest, reply: FastifyRepl
   const requestOrigin = origin || (referer ? new URL(referer).origin : null);
 
   if (requestOrigin && !allowedOrigins.includes(requestOrigin)) {
-    logger.warn('Request from unauthorized origin', {
-      origin: requestOrigin,
-      path: request.url,
-      ip: request.ip,
-    });
+    logger.warn(
+      {
+        origin: requestOrigin,
+        path: request.url,
+        ip: request.ip,
+      },
+      'Request from unauthorized origin',
+    );
 
     reply.code(403).send({
       error: 'Forbidden',
