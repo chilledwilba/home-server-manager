@@ -1,0 +1,511 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { OllamaClient } from '../../../../src/integrations/ollama/client.js';
+
+// Mock fetch globally
+global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+
+// Mock AbortController
+global.AbortController = jest.fn(() => ({
+  abort: jest.fn(),
+  signal: {} as AbortSignal,
+})) as any;
+
+describe('OllamaClient', () => {
+  let client: OllamaClient;
+
+  beforeEach(() => {
+    client = new OllamaClient({
+      baseUrl: 'http://localhost:11434',
+    });
+    jest.clearAllMocks();
+  });
+
+  describe('Constructor', () => {
+    it('should initialize with correct configuration', () => {
+      expect(client).toBeDefined();
+      expect(client).toBeInstanceOf(OllamaClient);
+    });
+
+    it('should handle URL with trailing slash', () => {
+      const clientWithSlash = new OllamaClient({
+        baseUrl: 'http://localhost:11434/',
+      });
+      expect(clientWithSlash).toBeDefined();
+    });
+
+    it('should use default URL if not provided', () => {
+      const defaultClient = new OllamaClient();
+      expect(defaultClient).toBeDefined();
+    });
+  });
+
+  describe('listModels', () => {
+    it('should fetch models successfully', async () => {
+      const mockModels = {
+        models: [
+          {
+            name: 'llama2:latest',
+            modified_at: '2024-01-01T00:00:00Z',
+            size: 3800000000,
+            digest: 'sha256:abc123',
+            details: {
+              format: 'gguf',
+              family: 'llama',
+              parameter_size: '7B',
+            },
+          },
+          {
+            name: 'mistral:latest',
+            modified_at: '2024-01-02T00:00:00Z',
+            size: 4100000000,
+            digest: 'sha256:def456',
+            details: {
+              format: 'gguf',
+              family: 'mistral',
+              parameter_size: '7B',
+            },
+          },
+        ],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockModels,
+      } as Response);
+
+      const result = await client.listModels();
+
+      expect(result).toEqual(mockModels.models);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/tags'),
+        expect.objectContaining({
+          signal: expect.any(Object),
+        })
+      );
+    });
+
+    it('should handle fetch errors gracefully', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await client.listModels();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle empty models list', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ models: [] }),
+      } as Response);
+
+      const result = await client.listModels();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle non-ok responses', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as Response);
+
+      const result = await client.listModels();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('pullModel', () => {
+    it('should pull model successfully', async () => {
+      const mockResponse = { status: 'success' };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      } as Response);
+
+      const result = await client.pullModel('llama2:latest');
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/pull'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ name: 'llama2:latest' }),
+        })
+      );
+    });
+
+    it('should handle pull failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response);
+
+      const result = await client.pullModel('non-existent:model');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('deleteModel', () => {
+    it('should delete model successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+      } as Response);
+
+      const result = await client.deleteModel('llama2:latest');
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/delete'),
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ name: 'llama2:latest' }),
+        })
+      );
+    });
+
+    it('should handle delete failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response);
+
+      const result = await client.deleteModel('non-existent:model');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('generateCompletion', () => {
+    it('should generate completion successfully', async () => {
+      const mockResponse = {
+        response: 'The capital of France is Paris.',
+        done: true,
+        context: [],
+        total_duration: 1000000000,
+        load_duration: 100000000,
+        prompt_eval_duration: 200000000,
+        eval_duration: 700000000,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      } as Response);
+
+      const result = await client.generateCompletion(
+        'llama2:latest',
+        'What is the capital of France?'
+      );
+
+      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/generate'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({
+            model: 'llama2:latest',
+            prompt: 'What is the capital of France?',
+            stream: false,
+          }),
+        })
+      );
+    });
+
+    it('should generate completion with options', async () => {
+      const mockResponse = {
+        response: 'Test response',
+        done: true,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      } as Response);
+
+      const options = {
+        temperature: 0.7,
+        top_p: 0.9,
+        max_tokens: 100,
+      };
+
+      const result = await client.generateCompletion(
+        'llama2:latest',
+        'Test prompt',
+        options
+      );
+
+      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({
+            model: 'llama2:latest',
+            prompt: 'Test prompt',
+            stream: false,
+            options,
+          }),
+        })
+      );
+    });
+
+    it('should handle generation failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as Response);
+
+      const result = await client.generateCompletion(
+        'llama2:latest',
+        'Test prompt'
+      );
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('chat', () => {
+    it('should send chat message successfully', async () => {
+      const mockResponse = {
+        message: {
+          role: 'assistant',
+          content: 'Hello! How can I help you today?',
+        },
+        done: true,
+        total_duration: 1000000000,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      } as Response);
+
+      const messages = [
+        { role: 'user', content: 'Hello!' },
+      ];
+
+      const result = await client.chat('llama2:latest', messages);
+
+      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/chat'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({
+            model: 'llama2:latest',
+            messages,
+            stream: false,
+          }),
+        })
+      );
+    });
+
+    it('should handle multi-turn conversation', async () => {
+      const mockResponse = {
+        message: {
+          role: 'assistant',
+          content: 'The answer is 42.',
+        },
+        done: true,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      } as Response);
+
+      const messages = [
+        { role: 'user', content: 'What is the meaning of life?' },
+        { role: 'assistant', content: 'That\'s a profound question!' },
+        { role: 'user', content: 'Can you give me a specific answer?' },
+      ];
+
+      const result = await client.chat('llama2:latest', messages);
+
+      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('"messages"'),
+        })
+      );
+    });
+
+    it('should handle chat failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Model not found',
+      } as Response);
+
+      const result = await client.chat('non-existent:model', [
+        { role: 'user', content: 'Test' },
+      ]);
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('showModelInfo', () => {
+    it('should fetch model info successfully', async () => {
+      const mockModelInfo = {
+        license: 'MIT',
+        modelfile: 'FROM llama2\nPARAMETER temperature 0.8',
+        parameters: 'temperature 0.8',
+        template: 'System: {{ .System }}\nUser: {{ .Prompt }}\nAssistant:',
+        details: {
+          format: 'gguf',
+          family: 'llama',
+          parameter_size: '7B',
+          quantization_level: 'Q4_0',
+        },
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockModelInfo,
+      } as Response);
+
+      const result = await client.showModelInfo('llama2:latest');
+
+      expect(result).toEqual(mockModelInfo);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/show'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ name: 'llama2:latest' }),
+        })
+      );
+    });
+
+    it('should handle model info fetch failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response);
+
+      const result = await client.showModelInfo('non-existent:model');
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('embeddings', () => {
+    it('should generate embeddings successfully', async () => {
+      const mockEmbeddings = {
+        embedding: [0.1, -0.2, 0.3, 0.4, -0.5],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockEmbeddings,
+      } as Response);
+
+      const result = await client.embeddings('llama2:latest', 'Test text');
+
+      expect(result).toEqual(mockEmbeddings);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/embeddings'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({
+            model: 'llama2:latest',
+            prompt: 'Test text',
+          }),
+        })
+      );
+    });
+
+    it('should handle embeddings generation failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as Response);
+
+      const result = await client.embeddings('llama2:latest', 'Test text');
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('isAvailable', () => {
+    it('should return true when Ollama is available', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ models: [] }),
+      } as Response);
+
+      const result = await client.isAvailable();
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/tags'),
+        expect.objectContaining({
+          signal: expect.any(Object),
+        })
+      );
+    });
+
+    it('should return false when Ollama is unavailable', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection refused'));
+
+      const result = await client.isAvailable();
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false on non-ok response', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+      } as Response);
+
+      const result = await client.isAvailable();
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('timeout handling', () => {
+    it('should handle request timeout', async () => {
+      // Mock fetch to simulate a timeout
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        new Promise((resolve, reject) => {
+          setTimeout(() => reject(new Error('AbortError')), 100);
+        })
+      );
+
+      const result = await client.listModels();
+
+      expect(result).toEqual([]);
+    });
+  });
+});

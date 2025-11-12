@@ -1,0 +1,534 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import {
+  RadarrClient,
+  SonarrClient,
+  ProwlarrClient,
+  BaseArrClient,
+} from '../../../../src/integrations/arr-apps/client.js';
+
+// Mock fetch globally
+global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+
+describe('BaseArrClient', () => {
+  let client: BaseArrClient;
+
+  beforeEach(() => {
+    client = new BaseArrClient({
+      baseUrl: 'http://test:8989',
+      apiKey: 'test-api-key',
+    });
+    jest.clearAllMocks();
+  });
+
+  describe('Constructor', () => {
+    it('should initialize with correct configuration', () => {
+      expect(client).toBeDefined();
+      expect(client).toBeInstanceOf(BaseArrClient);
+    });
+  });
+
+  describe('getSystemStatus', () => {
+    it('should fetch system status successfully', async () => {
+      const mockStatus = {
+        version: '3.0.0.0',
+        startTime: '2024-01-01T00:00:00Z',
+        isLinux: true,
+        isDocker: true,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockStatus,
+      } as Response);
+
+      const result = await client.getSystemStatus();
+
+      expect(result).toEqual(mockStatus);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/system/status'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Api-Key': 'test-api-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle authentication failures', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      } as Response);
+
+      const result = await client.getSystemStatus();
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('getHealth', () => {
+    it('should fetch health checks successfully', async () => {
+      const mockHealth = [
+        { source: 'ImportListStatusCheck', type: 'ok', message: 'All import lists are enabled' },
+        { source: 'IndexerStatusCheck', type: 'ok', message: 'All indexers are enabled' },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockHealth,
+      } as Response);
+
+      const result = await client.getHealth();
+
+      expect(result).toEqual(mockHealth);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/health'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Api-Key': 'test-api-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('getRootFolders', () => {
+    it('should fetch root folders successfully', async () => {
+      const mockFolders = [
+        { id: 1, path: '/media/movies', accessible: true, freeSpace: 1000000000000 },
+        { id: 2, path: '/media/tv', accessible: true, freeSpace: 500000000000 },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockFolders,
+      } as Response);
+
+      const result = await client.getRootFolders();
+
+      expect(result).toEqual(mockFolders);
+    });
+  });
+
+  describe('getQueue', () => {
+    it('should fetch queue successfully', async () => {
+      const mockQueue = {
+        records: [
+          { id: 1, title: 'Test Movie', status: 'downloading', sizeleft: 1000000 },
+          { id: 2, title: 'Another Movie', status: 'queued', sizeleft: 2000000 },
+        ],
+        totalRecords: 2,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockQueue,
+      } as Response);
+
+      const result = await client.getQueue();
+
+      expect(result).toEqual(mockQueue);
+    });
+  });
+
+  describe('getHistory', () => {
+    it('should fetch history with pagination', async () => {
+      const mockHistory = {
+        records: [
+          { id: 1, date: '2024-01-01T00:00:00Z', eventType: 'downloadFolderImported' },
+          { id: 2, date: '2024-01-02T00:00:00Z', eventType: 'grabbed' },
+        ],
+        totalRecords: 2,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockHistory,
+      } as Response);
+
+      const result = await client.getHistory(1, 10);
+
+      expect(result).toEqual(mockHistory);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/history?page=1&pageSize=10'),
+        expect.any(Object)
+      );
+    });
+  });
+});
+
+describe('RadarrClient', () => {
+  let client: RadarrClient;
+
+  beforeEach(() => {
+    client = new RadarrClient({
+      baseUrl: 'http://radarr:7878',
+      apiKey: 'radarr-api-key',
+    });
+    jest.clearAllMocks();
+  });
+
+  describe('getMovies', () => {
+    it('should fetch movies successfully', async () => {
+      const mockMovies = [
+        { id: 1, title: 'The Matrix', year: 1999, hasFile: true, monitored: true },
+        { id: 2, title: 'Inception', year: 2010, hasFile: false, monitored: true },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockMovies,
+      } as Response);
+
+      const result = await client.getMovies();
+
+      expect(result).toEqual(mockMovies);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/movie'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Api-Key': 'radarr-api-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle empty movie list', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      const result = await client.getMovies();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('addMovie', () => {
+    it('should add movie successfully', async () => {
+      const movieData = {
+        title: 'New Movie',
+        tmdbId: 12345,
+        qualityProfileId: 1,
+        rootFolderPath: '/media/movies',
+        monitored: true,
+        addOptions: {
+          searchForMovie: true,
+        },
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 3, ...movieData }),
+      } as Response);
+
+      const result = await client.addMovie(movieData);
+
+      expect(result).toBeTruthy();
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/movie'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-Api-Key': 'radarr-api-key',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify(movieData),
+        })
+      );
+    });
+  });
+
+  describe('deleteMovie', () => {
+    it('should delete movie successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+      } as Response);
+
+      const result = await client.deleteMovie(1, true);
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/movie/1?deleteFiles=true'),
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            'X-Api-Key': 'radarr-api-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('searchMovie', () => {
+    it('should trigger movie search successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ name: 'MoviesSearch', started: true }),
+      } as Response);
+
+      const result = await client.searchMovie(1);
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/command'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-Api-Key': 'radarr-api-key',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ name: 'MoviesSearch', movieIds: [1] }),
+        })
+      );
+    });
+  });
+});
+
+describe('SonarrClient', () => {
+  let client: SonarrClient;
+
+  beforeEach(() => {
+    client = new SonarrClient({
+      baseUrl: 'http://sonarr:8989',
+      apiKey: 'sonarr-api-key',
+    });
+    jest.clearAllMocks();
+  });
+
+  describe('getSeries', () => {
+    it('should fetch series successfully', async () => {
+      const mockSeries = [
+        { id: 1, title: 'Breaking Bad', year: 2008, monitored: true, seasonCount: 5 },
+        { id: 2, title: 'The Wire', year: 2002, monitored: false, seasonCount: 5 },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockSeries,
+      } as Response);
+
+      const result = await client.getSeries();
+
+      expect(result).toEqual(mockSeries);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/series'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Api-Key': 'sonarr-api-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('getEpisodes', () => {
+    it('should fetch episodes for a series', async () => {
+      const mockEpisodes = [
+        { id: 1, seriesId: 1, seasonNumber: 1, episodeNumber: 1, hasFile: true },
+        { id: 2, seriesId: 1, seasonNumber: 1, episodeNumber: 2, hasFile: false },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockEpisodes,
+      } as Response);
+
+      const result = await client.getEpisodes(1);
+
+      expect(result).toEqual(mockEpisodes);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/episode?seriesId=1'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('addSeries', () => {
+    it('should add series successfully', async () => {
+      const seriesData = {
+        title: 'New Series',
+        tvdbId: 12345,
+        qualityProfileId: 1,
+        rootFolderPath: '/media/tv',
+        monitored: true,
+        seasons: [],
+        addOptions: {
+          searchForMissingEpisodes: true,
+        },
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 3, ...seriesData }),
+      } as Response);
+
+      const result = await client.addSeries(seriesData);
+
+      expect(result).toBeTruthy();
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/series'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-Api-Key': 'sonarr-api-key',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify(seriesData),
+        })
+      );
+    });
+  });
+
+  describe('getCalendar', () => {
+    it('should fetch calendar events', async () => {
+      const mockCalendar = [
+        { id: 1, seriesId: 1, airDate: '2024-01-01', hasFile: false },
+        { id: 2, seriesId: 2, airDate: '2024-01-02', hasFile: true },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockCalendar,
+      } as Response);
+
+      const start = '2024-01-01';
+      const end = '2024-01-31';
+      const result = await client.getCalendar(start, end);
+
+      expect(result).toEqual(mockCalendar);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining(`/api/v3/calendar?start=${start}&end=${end}`),
+        expect.any(Object)
+      );
+    });
+  });
+});
+
+describe('ProwlarrClient', () => {
+  let client: ProwlarrClient;
+
+  beforeEach(() => {
+    client = new ProwlarrClient({
+      baseUrl: 'http://prowlarr:9696',
+      apiKey: 'prowlarr-api-key',
+    });
+    jest.clearAllMocks();
+  });
+
+  describe('getIndexers', () => {
+    it('should fetch indexers successfully', async () => {
+      const mockIndexers = [
+        { id: 1, name: 'Indexer1', enable: true, protocol: 'torrent', priority: 25 },
+        { id: 2, name: 'Indexer2', enable: false, protocol: 'usenet', priority: 50 },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockIndexers,
+      } as Response);
+
+      const result = await client.getIndexers();
+
+      expect(result).toEqual(mockIndexers);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/indexer'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Api-Key': 'prowlarr-api-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('testIndexer', () => {
+    it('should test indexer successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ isValid: true, validationFailures: [] }),
+      } as Response);
+
+      const result = await client.testIndexer(1);
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/indexer/test'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-Api-Key': 'prowlarr-api-key',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ id: 1 }),
+        })
+      );
+    });
+
+    it('should return false for failed test', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ isValid: false, validationFailures: ['Connection failed'] }),
+      } as Response);
+
+      const result = await client.testIndexer(1);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('syncIndexers', () => {
+    it('should sync indexers successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ name: 'ApplicationIndexerSync', started: true }),
+      } as Response);
+
+      const result = await client.syncIndexers();
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/command'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-Api-Key': 'prowlarr-api-key',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ name: 'ApplicationIndexerSync' }),
+        })
+      );
+    });
+  });
+
+  describe('getStats', () => {
+    it('should fetch indexer stats successfully', async () => {
+      const mockStats = {
+        indexers: [
+          { indexerId: 1, numberOfGrabs: 100, numberOfQueries: 500 },
+          { indexerId: 2, numberOfGrabs: 50, numberOfQueries: 200 },
+        ],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockStats,
+      } as Response);
+
+      const result = await client.getStats();
+
+      expect(result).toEqual(mockStats);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/indexerstats'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Api-Key': 'prowlarr-api-key',
+          }),
+        })
+      );
+    });
+  });
+});

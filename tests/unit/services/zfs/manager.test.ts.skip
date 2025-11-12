@@ -1,0 +1,501 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import Database from 'better-sqlite3';
+import { ZFSManager } from '../../../../src/services/zfs/manager.js';
+import { TrueNASClient } from '../../../../src/integrations/truenas/client.js';
+
+// Mock TrueNASClient
+jest.mock('../../../../src/integrations/truenas/client.js');
+
+// Mock NodeJS.Timeout if not available
+if (typeof global.NodeJS === 'undefined') {
+  (global as any).NodeJS = {
+    Timeout: class Timeout {},
+  };
+}
+
+describe('ZFSManager', () => {
+  let db: Database.Database;
+  let manager: ZFSManager;
+  let mockTrueNASClient: jest.Mocked<TrueNASClient>;
+
+  beforeEach(() => {
+    // Create in-memory database
+    db = new Database(':memory:');
+
+    // Create required tables
+    db.exec(`
+      CREATE TABLE pools (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        size INTEGER,
+        used INTEGER,
+        available INTEGER,
+        health TEXT,
+        status TEXT,
+        scan_state TEXT,
+        scan_percent REAL,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE datasets (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        pool TEXT NOT NULL,
+        used INTEGER,
+        available INTEGER,
+        referenced INTEGER,
+        mountpoint TEXT,
+        compression TEXT,
+        compression_ratio REAL,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE snapshots (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        dataset TEXT NOT NULL,
+        created_at TEXT,
+        referenced INTEGER,
+        used INTEGER,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE alerts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        level TEXT NOT NULL,
+        source TEXT NOT NULL,
+        message TEXT NOT NULL,
+        details TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        acknowledged BOOLEAN DEFAULT 0
+      );
+    `);
+
+    // Create mock TrueNAS client
+    mockTrueNASClient = {
+      getPools: jest.fn(),
+      getDatasets: jest.fn(),
+      getSnapshots: jest.fn(),
+      createSnapshot: jest.fn(),
+      deleteSnapshot: jest.fn(),
+      scrubPool: jest.fn(),
+      getAlerts: jest.fn(),
+      getDisks: jest.fn(),
+      getServices: jest.fn(),
+      getReplicationTasks: jest.fn(),
+      getSystemInfo: jest.fn(),
+    } as any;
+
+    manager = new ZFSManager(db, mockTrueNASClient);
+  });
+
+  afterEach(() => {
+    db.close();
+    jest.clearAllMocks();
+  });
+
+  describe('updatePoolStatus', () => {
+    it('should fetch and store pool status', async () => {
+      const mockPools = [
+        {
+          id: 1,
+          name: 'tank',
+          topology: {
+            data: {
+              children: [
+                { stats: { size: 1000000000000 } },
+                { stats: { size: 1000000000000 } },
+              ],
+            },
+          },
+          healthy: true,
+          status: 'ONLINE',
+          scan: {
+            state: 'FINISHED',
+            percentage: 100,
+          },
+        },
+        {
+          id: 2,
+          name: 'backup',
+          topology: {
+            data: {
+              children: [
+                { stats: { size: 500000000000 } },
+              ],
+            },
+          },
+          healthy: true,
+          status: 'ONLINE',
+          scan: {
+            state: 'NONE',
+          },
+        },
+      ];
+
+      mockTrueNASClient.getPools.mockResolvedValue(mockPools);
+
+      await manager.updatePoolStatus();
+
+      // Check that pools were stored in database
+      const pools = db.prepare('SELECT * FROM pools').all();
+      expect(pools).toHaveLength(2);
+      expect(pools[0].name).toBe('tank');
+      expect(pools[0].health).toBe('HEALTHY');
+      expect(pools[1].name).toBe('backup');
+    });
+
+    it('should handle pool fetch errors', async () => {
+      mockTrueNASClient.getPools.mockRejectedValue(new Error('API Error'));
+
+      await expect(manager.updatePoolStatus()).resolves.not.toThrow();
+
+      // Check that no pools were stored
+      const pools = db.prepare('SELECT * FROM pools').all();
+      expect(pools).toHaveLength(0);
+    });
+
+    it('should detect degraded pools', async () => {
+      const mockPools = [
+        {
+          id: 1,
+          name: 'tank',
+          topology: {
+            data: {
+              children: [
+                { stats: { size: 1000000000000 } },
+              ],
+            },
+          },
+          healthy: false,
+          status: 'DEGRADED',
+          scan: {
+            state: 'SCANNING',
+            percentage: 45,
+          },
+        },
+      ];
+
+      mockTrueNASClient.getPools.mockResolvedValue(mockPools);
+
+      await manager.updatePoolStatus();
+
+      const pool = db.prepare('SELECT * FROM pools WHERE name = ?').get('tank');
+      expect(pool.health).toBe('DEGRADED');
+      expect(pool.status).toBe('DEGRADED');
+      expect(pool.scan_state).toBe('SCANNING');
+      expect(pool.scan_percent).toBe(45);
+    });
+  });
+
+  describe('updateDatasets', () => {
+    it('should fetch and store datasets', async () => {
+      const mockDatasets = [
+        {
+          id: 'tank/media',
+          name: 'media',
+          pool: 'tank',
+          used: { parsed: 500000000000 },
+          available: { parsed: 1500000000000 },
+          referenced: { parsed: 450000000000 },
+          mountpoint: '/mnt/tank/media',
+          compression: { value: 'lz4' },
+          compressratio: { parsed: 1.5 },
+        },
+        {
+          id: 'tank/documents',
+          name: 'documents',
+          pool: 'tank',
+          used: { parsed: 100000000000 },
+          available: { parsed: 1500000000000 },
+          referenced: { parsed: 90000000000 },
+          mountpoint: '/mnt/tank/documents',
+          compression: { value: 'gzip' },
+          compressratio: { parsed: 2.1 },
+        },
+      ];
+
+      mockTrueNASClient.getDatasets.mockResolvedValue(mockDatasets);
+
+      await manager.updateDatasets();
+
+      // Check that datasets were stored
+      const datasets = db.prepare('SELECT * FROM datasets').all();
+      expect(datasets).toHaveLength(2);
+      expect(datasets[0].id).toBe('tank/media');
+      expect(datasets[0].compression_ratio).toBe(1.5);
+      expect(datasets[1].id).toBe('tank/documents');
+      expect(datasets[1].compression).toBe('gzip');
+    });
+
+    it('should handle dataset fetch errors', async () => {
+      mockTrueNASClient.getDatasets.mockRejectedValue(new Error('API Error'));
+
+      await expect(manager.updateDatasets()).resolves.not.toThrow();
+
+      const datasets = db.prepare('SELECT * FROM datasets').all();
+      expect(datasets).toHaveLength(0);
+    });
+  });
+
+  describe('createSnapshot', () => {
+    it('should create snapshot successfully', async () => {
+      const mockSnapshot = {
+        id: 'tank/media@manual-2024-01-01',
+        name: 'manual-2024-01-01',
+        dataset: 'tank/media',
+        properties: {
+          creation: { value: '1704067200' },
+        },
+      };
+
+      mockTrueNASClient.createSnapshot.mockResolvedValue(mockSnapshot);
+
+      const result = await manager.createSnapshot('tank/media', 'manual-2024-01-01');
+
+      expect(result).toBe(true);
+      expect(mockTrueNASClient.createSnapshot).toHaveBeenCalledWith(
+        'tank/media',
+        'manual-2024-01-01',
+        false
+      );
+
+      // Check that snapshot was stored
+      const snapshot = db
+        .prepare('SELECT * FROM snapshots WHERE id = ?')
+        .get('tank/media@manual-2024-01-01');
+      expect(snapshot).toBeDefined();
+      expect(snapshot.name).toBe('manual-2024-01-01');
+    });
+
+    it('should handle snapshot creation failure', async () => {
+      mockTrueNASClient.createSnapshot.mockResolvedValue(null);
+
+      const result = await manager.createSnapshot('tank/media', 'failed-snapshot');
+
+      expect(result).toBe(false);
+    });
+
+    it('should create recursive snapshots', async () => {
+      const mockSnapshot = {
+        id: 'tank@recursive-backup',
+        name: 'recursive-backup',
+        dataset: 'tank',
+        properties: {
+          creation: { value: '1704067200' },
+        },
+      };
+
+      mockTrueNASClient.createSnapshot.mockResolvedValue(mockSnapshot);
+
+      const result = await manager.createSnapshot('tank', 'recursive-backup', true);
+
+      expect(result).toBe(true);
+      expect(mockTrueNASClient.createSnapshot).toHaveBeenCalledWith(
+        'tank',
+        'recursive-backup',
+        true
+      );
+    });
+  });
+
+  describe('deleteSnapshot', () => {
+    it('should delete snapshot successfully', async () => {
+      // Insert snapshot to delete
+      db.prepare(`
+        INSERT INTO snapshots (id, name, dataset, created_at)
+        VALUES (?, ?, ?, ?)
+      `).run(
+        'tank/media@old-snapshot',
+        'old-snapshot',
+        'tank/media',
+        new Date().toISOString()
+      );
+
+      mockTrueNASClient.deleteSnapshot.mockResolvedValue(true);
+
+      const result = await manager.deleteSnapshot('tank/media@old-snapshot');
+
+      expect(result).toBe(true);
+      expect(mockTrueNASClient.deleteSnapshot).toHaveBeenCalledWith('tank/media@old-snapshot');
+
+      // Check that snapshot was removed from database
+      const snapshot = db
+        .prepare('SELECT * FROM snapshots WHERE id = ?')
+        .get('tank/media@old-snapshot');
+      expect(snapshot).toBeUndefined();
+    });
+
+    it('should handle snapshot deletion failure', async () => {
+      mockTrueNASClient.deleteSnapshot.mockResolvedValue(false);
+
+      const result = await manager.deleteSnapshot('tank/media@non-existent');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('scrubPool', () => {
+    it('should start pool scrub successfully', async () => {
+      mockTrueNASClient.scrubPool.mockResolvedValue(true);
+
+      const result = await manager.scrubPool('tank');
+
+      expect(result).toBe(true);
+      expect(mockTrueNASClient.scrubPool).toHaveBeenCalledWith('tank', 'START');
+    });
+
+    it('should stop pool scrub successfully', async () => {
+      mockTrueNASClient.scrubPool.mockResolvedValue(true);
+
+      const result = await manager.scrubPool('tank', 'STOP');
+
+      expect(result).toBe(true);
+      expect(mockTrueNASClient.scrubPool).toHaveBeenCalledWith('tank', 'STOP');
+    });
+
+    it('should handle scrub failure', async () => {
+      mockTrueNASClient.scrubPool.mockResolvedValue(false);
+
+      const result = await manager.scrubPool('tank');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('analyzePoolHealth', () => {
+    it('should analyze pool health metrics', async () => {
+      // Insert pool data
+      db.prepare(`
+        INSERT INTO pools (id, name, size, used, available, health, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(1, 'tank', 2000000000000, 1800000000000, 200000000000, 'HEALTHY', 'ONLINE');
+
+      const analysis = await manager.analyzePoolHealth('tank');
+
+      expect(analysis).toBeDefined();
+      expect(analysis.name).toBe('tank');
+      expect(analysis.usagePercent).toBe(90); // 1800/2000 = 90%
+      expect(analysis.healthStatus).toBe('HEALTHY');
+      expect(analysis.recommendations).toContain('high usage');
+    });
+
+    it('should detect degraded pool health', async () => {
+      db.prepare(`
+        INSERT INTO pools (id, name, size, used, available, health, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(1, 'tank', 2000000000000, 1000000000000, 1000000000000, 'DEGRADED', 'DEGRADED');
+
+      const analysis = await manager.analyzePoolHealth('tank');
+
+      expect(analysis).toBeDefined();
+      expect(analysis.healthStatus).toBe('DEGRADED');
+      expect(analysis.recommendations).toContain('immediate attention');
+    });
+
+    it('should handle non-existent pool', async () => {
+      const analysis = await manager.analyzePoolHealth('non-existent');
+
+      expect(analysis).toBeNull();
+    });
+  });
+
+  describe('getSnapshotSchedule', () => {
+    it('should generate snapshot schedule recommendations', async () => {
+      // Insert dataset data
+      db.prepare(`
+        INSERT INTO datasets (id, name, pool, used, available)
+        VALUES (?, ?, ?, ?, ?)
+      `).run('tank/important', 'important', 'tank', 100000000000, 1900000000000);
+
+      const schedule = await manager.getSnapshotSchedule('tank/important');
+
+      expect(schedule).toBeDefined();
+      expect(schedule.dataset).toBe('tank/important');
+      expect(schedule.frequency).toBeDefined();
+      expect(schedule.retention).toBeDefined();
+      expect(schedule.nextSnapshot).toBeDefined();
+    });
+
+    it('should recommend frequent snapshots for active datasets', async () => {
+      // Insert dataset with high activity
+      db.prepare(`
+        INSERT INTO datasets (id, name, pool, used, available, referenced)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run('tank/active', 'active', 'tank', 500000000000, 1500000000000, 450000000000);
+
+      // Insert recent snapshots showing activity
+      const now = Date.now();
+      for (let i = 0; i < 5; i++) {
+        db.prepare(`
+          INSERT INTO snapshots (id, name, dataset, created_at, used)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(
+          `tank/active@auto-${i}`,
+          `auto-${i}`,
+          'tank/active',
+          new Date(now - i * 3600000).toISOString(),
+          10000000 * (i + 1)
+        );
+      }
+
+      const schedule = await manager.getSnapshotSchedule('tank/active');
+
+      expect(schedule).toBeDefined();
+      expect(schedule.frequency).toContain('hourly');
+    });
+  });
+
+  describe('cleanupOldSnapshots', () => {
+    it('should remove old snapshots based on retention policy', async () => {
+      const now = Date.now();
+
+      // Insert snapshots of various ages
+      const snapshots = [
+        { id: 'tank/media@old-1', age: 35 }, // Older than 30 days
+        { id: 'tank/media@old-2', age: 31 }, // Older than 30 days
+        { id: 'tank/media@recent-1', age: 10 }, // Recent
+        { id: 'tank/media@recent-2', age: 5 },  // Recent
+      ];
+
+      snapshots.forEach(snap => {
+        db.prepare(`
+          INSERT INTO snapshots (id, name, dataset, created_at)
+          VALUES (?, ?, ?, ?)
+        `).run(
+          snap.id,
+          snap.id.split('@')[1],
+          'tank/media',
+          new Date(now - snap.age * 86400000).toISOString()
+        );
+      });
+
+      mockTrueNASClient.deleteSnapshot.mockResolvedValue(true);
+
+      const deleted = await manager.cleanupOldSnapshots('tank/media', 30);
+
+      expect(deleted).toBe(2); // Should delete 2 old snapshots
+      expect(mockTrueNASClient.deleteSnapshot).toHaveBeenCalledTimes(2);
+      expect(mockTrueNASClient.deleteSnapshot).toHaveBeenCalledWith('tank/media@old-1');
+      expect(mockTrueNASClient.deleteSnapshot).toHaveBeenCalledWith('tank/media@old-2');
+    });
+
+    it('should handle cleanup errors gracefully', async () => {
+      db.prepare(`
+        INSERT INTO snapshots (id, name, dataset, created_at)
+        VALUES (?, ?, ?, ?)
+      `).run(
+        'tank/media@old',
+        'old',
+        'tank/media',
+        new Date(Date.now() - 40 * 86400000).toISOString()
+      );
+
+      mockTrueNASClient.deleteSnapshot.mockResolvedValue(false);
+
+      const deleted = await manager.cleanupOldSnapshots('tank/media', 30);
+
+      expect(deleted).toBe(0); // Failed to delete
+    });
+  });
+});

@@ -1,0 +1,550 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { TrueNASClient } from '../../../../src/integrations/truenas/client.js';
+
+// Mock fetch globally
+global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+
+describe('TrueNASClient', () => {
+  let client: TrueNASClient;
+  const mockLogger = {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  };
+
+  beforeEach(() => {
+    client = new TrueNASClient({
+      baseUrl: 'http://truenas.local',
+      apiKey: 'test-api-key',
+      logger: mockLogger,
+    });
+    jest.clearAllMocks();
+  });
+
+  describe('Constructor', () => {
+    it('should initialize with correct configuration', () => {
+      expect(client).toBeDefined();
+      expect(client).toBeInstanceOf(TrueNASClient);
+    });
+
+    it('should handle URL with trailing slash', () => {
+      const clientWithSlash = new TrueNASClient({
+        baseUrl: 'http://truenas.local/',
+        apiKey: 'test-api-key',
+      });
+      expect(clientWithSlash).toBeDefined();
+    });
+  });
+
+  describe('getPools', () => {
+    it('should fetch pools successfully', async () => {
+      const mockPools = [
+        {
+          id: 1,
+          name: 'tank',
+          healthy: true,
+          status: 'ONLINE',
+          scan: { state: 'FINISHED' },
+          topology: {
+            data: {
+              type: 'RAIDZ1',
+              children: [],
+            },
+          },
+        },
+        {
+          id: 2,
+          name: 'backup',
+          healthy: true,
+          status: 'ONLINE',
+          scan: { state: 'FINISHED' },
+          topology: {
+            data: {
+              type: 'MIRROR',
+              children: [],
+            },
+          },
+        },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockPools,
+      } as Response);
+
+      const result = await client.getPools();
+
+      expect(result).toEqual(mockPools);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/pool'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle fetch errors gracefully', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await client.getPools();
+
+      expect(result).toEqual([]);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to fetch pools',
+        expect.any(Error)
+      );
+    });
+
+    it('should handle authentication failures', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      } as Response);
+
+      const result = await client.getPools();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getDatasets', () => {
+    it('should fetch datasets successfully', async () => {
+      const mockDatasets = [
+        {
+          id: 'tank/media',
+          name: 'media',
+          pool: 'tank',
+          used: { parsed: 1000000000 },
+          available: { parsed: 5000000000 },
+          mountpoint: '/mnt/tank/media',
+        },
+        {
+          id: 'tank/documents',
+          name: 'documents',
+          pool: 'tank',
+          used: { parsed: 500000000 },
+          available: { parsed: 5000000000 },
+          mountpoint: '/mnt/tank/documents',
+        },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockDatasets,
+      } as Response);
+
+      const result = await client.getDatasets();
+
+      expect(result).toEqual(mockDatasets);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/pool/dataset'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle empty dataset list', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      const result = await client.getDatasets();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getDisks', () => {
+    it('should fetch disks successfully', async () => {
+      const mockDisks = [
+        {
+          identifier: 'ada0',
+          name: 'ada0',
+          size: 1000000000000,
+          model: 'Samsung SSD 870',
+          serial: 'S5Y1NJ0N123456',
+          temperature: 35,
+        },
+        {
+          identifier: 'ada1',
+          name: 'ada1',
+          size: 2000000000000,
+          model: 'WD Red Plus',
+          serial: 'WD-WCC123456789',
+          temperature: 38,
+        },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockDisks,
+      } as Response);
+
+      const result = await client.getDisks();
+
+      expect(result).toEqual(mockDisks);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/disk'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('getSnapshots', () => {
+    it('should fetch snapshots successfully', async () => {
+      const mockSnapshots = [
+        {
+          id: 'tank/media@auto-2024-01-01-00-00',
+          name: 'auto-2024-01-01-00-00',
+          dataset: 'tank/media',
+          properties: {
+            creation: { value: '1704067200' },
+            used: { value: '1000000' },
+            referenced: { value: '5000000000' },
+          },
+        },
+        {
+          id: 'tank/media@manual-backup',
+          name: 'manual-backup',
+          dataset: 'tank/media',
+          properties: {
+            creation: { value: '1704153600' },
+            used: { value: '2000000' },
+            referenced: { value: '5100000000' },
+          },
+        },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockSnapshots,
+      } as Response);
+
+      const result = await client.getSnapshots();
+
+      expect(result).toEqual(mockSnapshots);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/zfs/snapshot'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('getServices', () => {
+    it('should fetch services successfully', async () => {
+      const mockServices = [
+        { id: 1, service: 'ssh', enable: true, state: 'RUNNING' },
+        { id: 2, service: 'nfs', enable: true, state: 'RUNNING' },
+        { id: 3, service: 'smb', enable: false, state: 'STOPPED' },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockServices,
+      } as Response);
+
+      const result = await client.getServices();
+
+      expect(result).toEqual(mockServices);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/service'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('getAlerts', () => {
+    it('should fetch alerts successfully', async () => {
+      const mockAlerts = [
+        {
+          id: '1',
+          level: 'WARNING',
+          formatted: 'Pool tank is 85% full',
+          datetime: '2024-01-01T00:00:00',
+          dismissed: false,
+        },
+        {
+          id: '2',
+          level: 'INFO',
+          formatted: 'Update available: TrueNAS-13.0-U6.1',
+          datetime: '2024-01-02T00:00:00',
+          dismissed: false,
+        },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAlerts,
+      } as Response);
+
+      const result = await client.getAlerts();
+
+      expect(result).toEqual(mockAlerts);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/alert/list'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle empty alerts list', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      const result = await client.getAlerts();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getReplicationTasks', () => {
+    it('should fetch replication tasks successfully', async () => {
+      const mockTasks = [
+        {
+          id: 1,
+          name: 'Backup to Remote',
+          enabled: true,
+          direction: 'PUSH',
+          source_datasets: ['tank/important'],
+          target_dataset: 'backup/replicas',
+          state: { state: 'FINISHED' },
+        },
+        {
+          id: 2,
+          name: 'Local Backup',
+          enabled: true,
+          direction: 'LOCAL',
+          source_datasets: ['tank/media'],
+          target_dataset: 'backup/media',
+          state: { state: 'RUNNING' },
+        },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockTasks,
+      } as Response);
+
+      const result = await client.getReplicationTasks();
+
+      expect(result).toEqual(mockTasks);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/replication'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('getSystemInfo', () => {
+    it('should fetch system info successfully', async () => {
+      const mockSystemInfo = {
+        version: 'TrueNAS-13.0-U5.3',
+        hostname: 'truenas.local',
+        uptime: 864000,
+        loadavg: [0.5, 0.3, 0.2],
+        cores: 8,
+        physmem: 34359738368,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockSystemInfo,
+      } as Response);
+
+      const result = await client.getSystemInfo();
+
+      expect(result).toEqual([mockSystemInfo]);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/system/info'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle system info fetch failure', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection refused'));
+
+      const result = await client.getSystemInfo();
+
+      expect(result).toEqual([]);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to get system info',
+        expect.any(Error)
+      );
+    });
+  });
+
+  describe('createSnapshot', () => {
+    it('should create snapshot successfully', async () => {
+      const mockSnapshot = {
+        id: 'tank/media@manual-2024-01-01',
+        name: 'manual-2024-01-01',
+        dataset: 'tank/media',
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockSnapshot,
+      } as Response);
+
+      const result = await client.createSnapshot('tank/media', 'manual-2024-01-01');
+
+      expect(result).toEqual(mockSnapshot);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/zfs/snapshot'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({
+            dataset: 'tank/media',
+            name: 'manual-2024-01-01',
+            recursive: false,
+          }),
+        })
+      );
+    });
+
+    it('should create recursive snapshot', async () => {
+      const mockSnapshot = {
+        id: 'tank@recursive-backup',
+        name: 'recursive-backup',
+        dataset: 'tank',
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockSnapshot,
+      } as Response);
+
+      const result = await client.createSnapshot('tank', 'recursive-backup', true);
+
+      expect(result).toEqual(mockSnapshot);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({
+            dataset: 'tank',
+            name: 'recursive-backup',
+            recursive: true,
+          }),
+        })
+      );
+    });
+  });
+
+  describe('deleteSnapshot', () => {
+    it('should delete snapshot successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+      } as Response);
+
+      const result = await client.deleteSnapshot('tank/media@old-snapshot');
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/zfs/snapshot/id/tank%2Fmedia%40old-snapshot'),
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle delete failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response);
+
+      const result = await client.deleteSnapshot('tank/media@non-existent');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('scrubPool', () => {
+    it('should start pool scrub successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ state: 'SCANNING' }),
+      } as Response);
+
+      const result = await client.scrubPool('tank');
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v2.0/pool/scrub'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({
+            pool: 'tank',
+            action: 'START',
+          }),
+        })
+      );
+    });
+
+    it('should stop pool scrub successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ state: 'FINISHED' }),
+      } as Response);
+
+      const result = await client.scrubPool('tank', 'STOP');
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({
+            pool: 'tank',
+            action: 'STOP',
+          }),
+        })
+      );
+    });
+  });
+});

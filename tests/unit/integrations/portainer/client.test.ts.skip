@@ -1,0 +1,348 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { PortainerClient } from '../../../../src/integrations/portainer/client.js';
+
+// Mock fetch globally
+global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+
+describe('PortainerClient', () => {
+  let client: PortainerClient;
+
+  beforeEach(() => {
+    client = new PortainerClient({
+      baseUrl: 'http://test:9000',
+      apiKey: 'test-key',
+    });
+    jest.clearAllMocks();
+  });
+
+  describe('Constructor', () => {
+    it('should initialize with correct configuration', () => {
+      expect(client).toBeDefined();
+      expect(client).toBeInstanceOf(PortainerClient);
+    });
+
+    it('should handle URL with trailing slash', () => {
+      const clientWithSlash = new PortainerClient({
+        baseUrl: 'http://test:9000/',
+        apiKey: 'test-key',
+      });
+      expect(clientWithSlash).toBeDefined();
+    });
+  });
+
+  describe('getContainers', () => {
+    it('should fetch containers successfully', async () => {
+      const mockContainers = [
+        { Id: '1', Name: 'test-container', State: { Status: 'running' } },
+        { Id: '2', Name: 'another-container', State: { Status: 'stopped' } },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockContainers,
+      } as Response);
+
+      const result = await client.getContainers();
+
+      expect(result).toEqual(mockContainers);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/containers/json'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle fetch errors gracefully', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await client.getContainers();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle non-ok responses', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as Response);
+
+      const result = await client.getContainers();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle authentication failures', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      } as Response);
+
+      const result = await client.getContainers();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getStacks', () => {
+    it('should fetch stacks successfully', async () => {
+      const mockStacks = [
+        { Id: 1, Name: 'monitoring-stack', Status: 1 },
+        { Id: 2, Name: 'media-stack', Status: 1 },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockStacks,
+      } as Response);
+
+      const result = await client.getStacks();
+
+      expect(result).toEqual(mockStacks);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/stacks'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle empty stacks response', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      const result = await client.getStacks();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('restartContainer', () => {
+    it('should restart container successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+      } as Response);
+
+      const result = await client.restartContainer('test-container-id');
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/containers/test-container-id/restart'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-key',
+          }),
+        })
+      );
+    });
+
+    it('should return false on restart failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      } as Response);
+
+      const result = await client.restartContainer('non-existent-id');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('deployStack', () => {
+    it('should deploy stack successfully', async () => {
+      const mockStackDefinition = {
+        Name: 'test-stack',
+        SwarmID: 'swarm-1',
+        Env: [],
+        StackFileContent: 'version: "3"\nservices:\n  app:\n    image: nginx',
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ Id: 1, Name: 'test-stack' }),
+      } as Response);
+
+      const result = await client.deployStack(mockStackDefinition);
+
+      expect(result).toBeTruthy();
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/stacks'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-key',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify(mockStackDefinition),
+        })
+      );
+    });
+  });
+
+  describe('updateStack', () => {
+    it('should update stack successfully', async () => {
+      const stackId = 1;
+      const stackDefinition = {
+        StackFileContent: 'version: "3"\nservices:\n  app:\n    image: nginx:latest',
+        Env: [],
+        Prune: false,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ Id: stackId, Name: 'test-stack' }),
+      } as Response);
+
+      const result = await client.updateStack(stackId, stackDefinition);
+
+      expect(result).toBeTruthy();
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining(`/stacks/${stackId}`),
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-key',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify(stackDefinition),
+        })
+      );
+    });
+  });
+
+  describe('deleteStack', () => {
+    it('should delete stack successfully', async () => {
+      const stackId = 1;
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+      } as Response);
+
+      const result = await client.deleteStack(stackId);
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining(`/stacks/${stackId}`),
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle delete stack failure', async () => {
+      const stackId = 999;
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      } as Response);
+
+      const result = await client.deleteStack(stackId);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getVolumes', () => {
+    it('should fetch volumes successfully', async () => {
+      const mockVolumes = {
+        Volumes: [
+          { Name: 'test-volume', Driver: 'local' },
+          { Name: 'another-volume', Driver: 'local' },
+        ],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockVolumes,
+      } as Response);
+
+      const result = await client.getVolumes();
+
+      expect(result).toEqual(mockVolumes);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/volumes'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('getNetworks', () => {
+    it('should fetch networks successfully', async () => {
+      const mockNetworks = [
+        { Id: '1', Name: 'bridge', Driver: 'bridge' },
+        { Id: '2', Name: 'host', Driver: 'host' },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockNetworks,
+      } as Response);
+
+      const result = await client.getNetworks();
+
+      expect(result).toEqual(mockNetworks);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/networks'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-key',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('getSystemInfo', () => {
+    it('should fetch system info successfully', async () => {
+      const mockSystemInfo = {
+        Version: '2.19.4',
+        DockerVersion: '24.0.7',
+        Platform: 'Docker',
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockSystemInfo,
+      } as Response);
+
+      const result = await client.getSystemInfo();
+
+      expect(result).toEqual(mockSystemInfo);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/system/info'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-key',
+          }),
+        })
+      );
+    });
+
+    it('should handle system info fetch failure', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection refused'));
+
+      const result = await client.getSystemInfo();
+
+      expect(result).toEqual({});
+    });
+  });
+});

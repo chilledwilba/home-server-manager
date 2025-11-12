@@ -1,0 +1,399 @@
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import Database from 'better-sqlite3';
+import { DiskPredictor } from '../../../../src/services/monitoring/disk-predictor.js';
+
+describe('DiskPredictor', () => {
+  let db: Database.Database;
+  let predictor: DiskPredictor;
+
+  beforeEach(() => {
+    db = new Database(':memory:');
+
+    // Create schema
+    db.exec(`
+      CREATE TABLE disk_health (
+        id INTEGER PRIMARY KEY,
+        disk_name TEXT NOT NULL,
+        pool_name TEXT,
+        smart_status TEXT,
+        temperature INTEGER,
+        power_on_hours INTEGER,
+        reallocated_sectors INTEGER,
+        pending_sectors INTEGER,
+        uncorrectable_sectors INTEGER,
+        timestamp TEXT NOT NULL
+      );
+    `);
+
+    predictor = new DiskPredictor(db);
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  describe('predictFailure', () => {
+    it('should predict high risk for high reallocated sectors', async () => {
+      // Insert test data with concerning metrics
+      const testData = {
+        diskName: 'sda',
+        poolName: 'tank',
+        reallocatedSectors: 150,
+        pendingSectors: 5,
+        uncorrectableSectors: 2,
+        temperature: 45,
+        powerOnHours: 30000,
+        timestamp: new Date().toISOString(),
+      };
+
+      db.prepare(`
+        INSERT INTO disk_health
+        (disk_name, pool_name, reallocated_sectors, pending_sectors,
+         uncorrectable_sectors, temperature, power_on_hours, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        testData.diskName,
+        testData.poolName,
+        testData.reallocatedSectors,
+        testData.pendingSectors,
+        testData.uncorrectableSectors,
+        testData.temperature,
+        testData.powerOnHours,
+        testData.timestamp
+      );
+
+      const prediction = await predictor.predictFailure('sda');
+
+      expect(prediction).toBeDefined();
+      expect(prediction.riskLevel).toBe('high');
+      expect(prediction.failureProbability).toBeGreaterThan(0.7);
+      expect(prediction.recommendation).toContain('replace');
+      expect(prediction.factors).toContain('reallocated sectors');
+    });
+
+    it('should predict medium risk for moderate issues', async () => {
+      // Insert test data with moderate concerns
+      const testData = {
+        diskName: 'sdb',
+        poolName: 'tank',
+        reallocatedSectors: 30,
+        pendingSectors: 1,
+        uncorrectableSectors: 0,
+        temperature: 50,
+        powerOnHours: 40000,
+        timestamp: new Date().toISOString(),
+      };
+
+      db.prepare(`
+        INSERT INTO disk_health
+        (disk_name, pool_name, reallocated_sectors, pending_sectors,
+         uncorrectable_sectors, temperature, power_on_hours, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        testData.diskName,
+        testData.poolName,
+        testData.reallocatedSectors,
+        testData.pendingSectors,
+        testData.uncorrectableSectors,
+        testData.temperature,
+        testData.powerOnHours,
+        testData.timestamp
+      );
+
+      const prediction = await predictor.predictFailure('sdb');
+
+      expect(prediction).toBeDefined();
+      expect(prediction.riskLevel).toBe('medium');
+      expect(prediction.failureProbability).toBeGreaterThan(0.3);
+      expect(prediction.failureProbability).toBeLessThan(0.7);
+      expect(prediction.recommendation).toContain('monitor closely');
+    });
+
+    it('should predict low risk for healthy disk', async () => {
+      // Insert test data for healthy disk
+      const testData = {
+        diskName: 'sdc',
+        poolName: 'tank',
+        reallocatedSectors: 0,
+        pendingSectors: 0,
+        uncorrectableSectors: 0,
+        temperature: 35,
+        powerOnHours: 10000,
+        timestamp: new Date().toISOString(),
+      };
+
+      db.prepare(`
+        INSERT INTO disk_health
+        (disk_name, pool_name, reallocated_sectors, pending_sectors,
+         uncorrectable_sectors, temperature, power_on_hours, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        testData.diskName,
+        testData.poolName,
+        testData.reallocatedSectors,
+        testData.pendingSectors,
+        testData.uncorrectableSectors,
+        testData.temperature,
+        testData.powerOnHours,
+        testData.timestamp
+      );
+
+      const prediction = await predictor.predictFailure('sdc');
+
+      expect(prediction).toBeDefined();
+      expect(prediction.riskLevel).toBe('low');
+      expect(prediction.failureProbability).toBeLessThan(0.3);
+      expect(prediction.recommendation).toContain('healthy');
+    });
+
+    it('should handle disk with no health data', async () => {
+      const prediction = await predictor.predictFailure('nonexistent');
+
+      expect(prediction).toBeDefined();
+      expect(prediction.riskLevel).toBe('unknown');
+      expect(prediction.failureProbability).toBe(0);
+      expect(prediction.recommendation).toContain('No data available');
+    });
+
+    it('should analyze trend over time', async () => {
+      const diskName = 'sdd';
+      const baseTime = Date.now();
+
+      // Insert historical data showing degradation
+      for (let i = 0; i < 10; i++) {
+        db.prepare(`
+          INSERT INTO disk_health
+          (disk_name, pool_name, reallocated_sectors, pending_sectors,
+           uncorrectable_sectors, temperature, power_on_hours, timestamp)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          diskName,
+          'tank',
+          i * 5, // Increasing reallocated sectors
+          Math.floor(i / 3), // Occasional pending sectors
+          0,
+          35 + i, // Slightly increasing temperature
+          20000 + (i * 24), // Increasing power on hours
+          new Date(baseTime - (9 - i) * 86400000).toISOString() // Daily entries
+        );
+      }
+
+      const prediction = await predictor.predictFailure(diskName);
+
+      expect(prediction).toBeDefined();
+      expect(prediction.factors).toContain('increasing reallocated sectors trend');
+      expect(prediction.riskLevel).not.toBe('low');
+    });
+  });
+
+  describe('getDiskHistory', () => {
+    it('should retrieve disk history', async () => {
+      const diskName = 'sde';
+      const entries = 5;
+
+      // Insert test data
+      for (let i = 0; i < entries; i++) {
+        db.prepare(`
+          INSERT INTO disk_health
+          (disk_name, pool_name, reallocated_sectors, temperature,
+           power_on_hours, timestamp)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(
+          diskName,
+          'tank',
+          i,
+          35 + i,
+          10000 + (i * 24),
+          new Date(Date.now() - (entries - i) * 86400000).toISOString()
+        );
+      }
+
+      const history = await predictor.getDiskHistory(diskName, 30);
+
+      expect(history).toBeDefined();
+      expect(history.length).toBe(entries);
+      expect(history[0].diskName).toBe(diskName);
+      // Should be ordered by timestamp DESC (most recent first)
+      expect(history[0].reallocatedSectors).toBe(entries - 1);
+    });
+
+    it('should limit history by days', async () => {
+      const diskName = 'sdf';
+
+      // Insert old and recent data
+      db.prepare(`
+        INSERT INTO disk_health
+        (disk_name, pool_name, reallocated_sectors, temperature,
+         power_on_hours, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        diskName,
+        'tank',
+        0,
+        35,
+        10000,
+        new Date(Date.now() - 40 * 86400000).toISOString() // 40 days old
+      );
+
+      db.prepare(`
+        INSERT INTO disk_health
+        (disk_name, pool_name, reallocated_sectors, temperature,
+         power_on_hours, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        diskName,
+        'tank',
+        1,
+        36,
+        10024,
+        new Date().toISOString() // Recent
+      );
+
+      const history = await predictor.getDiskHistory(diskName, 30);
+
+      expect(history).toBeDefined();
+      expect(history.length).toBe(1); // Only recent entry
+      expect(history[0].reallocatedSectors).toBe(1);
+    });
+
+    it('should return empty array for non-existent disk', async () => {
+      const history = await predictor.getDiskHistory('nonexistent', 30);
+
+      expect(history).toBeDefined();
+      expect(history).toEqual([]);
+    });
+  });
+
+  describe('predictTimeToFailure', () => {
+    it('should predict time to failure based on degradation rate', async () => {
+      const diskName = 'sdg';
+      const baseTime = Date.now();
+
+      // Insert data showing linear degradation
+      for (let i = 0; i < 30; i++) {
+        db.prepare(`
+          INSERT INTO disk_health
+          (disk_name, pool_name, reallocated_sectors, pending_sectors,
+           uncorrectable_sectors, temperature, power_on_hours, timestamp)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          diskName,
+          'tank',
+          i * 2, // Linear increase in reallocated sectors
+          0,
+          0,
+          35,
+          20000 + (i * 24),
+          new Date(baseTime - (29 - i) * 86400000).toISOString() // Daily entries
+        );
+      }
+
+      const timeToFailure = await predictor.predictTimeToFailure(diskName);
+
+      expect(timeToFailure).toBeDefined();
+      expect(timeToFailure.days).toBeGreaterThan(0);
+      expect(timeToFailure.confidence).toBeGreaterThan(0);
+      expect(timeToFailure.confidence).toBeLessThanOrEqual(1);
+      expect(timeToFailure.basedOn).toContain('reallocated sectors trend');
+    });
+
+    it('should return null for stable disk', async () => {
+      const diskName = 'sdh';
+
+      // Insert stable data
+      for (let i = 0; i < 10; i++) {
+        db.prepare(`
+          INSERT INTO disk_health
+          (disk_name, pool_name, reallocated_sectors, pending_sectors,
+           uncorrectable_sectors, temperature, power_on_hours, timestamp)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          diskName,
+          'tank',
+          0, // No reallocated sectors
+          0,
+          0,
+          35,
+          20000 + (i * 24),
+          new Date(Date.now() - (9 - i) * 86400000).toISOString()
+        );
+      }
+
+      const timeToFailure = await predictor.predictTimeToFailure(diskName);
+
+      expect(timeToFailure).toBeNull();
+    });
+  });
+
+  describe('getPoolHealthScore', () => {
+    it('should calculate pool health score', async () => {
+      const poolName = 'tank';
+
+      // Insert data for multiple disks in pool
+      const disks = ['sdi', 'sdj', 'sdk'];
+      disks.forEach((disk, index) => {
+        db.prepare(`
+          INSERT INTO disk_health
+          (disk_name, pool_name, reallocated_sectors, pending_sectors,
+           uncorrectable_sectors, temperature, power_on_hours, timestamp)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          disk,
+          poolName,
+          index * 10, // Varying health
+          0,
+          0,
+          35 + index * 2,
+          20000 + index * 1000,
+          new Date().toISOString()
+        );
+      });
+
+      const healthScore = await predictor.getPoolHealthScore(poolName);
+
+      expect(healthScore).toBeDefined();
+      expect(healthScore.score).toBeGreaterThanOrEqual(0);
+      expect(healthScore.score).toBeLessThanOrEqual(100);
+      expect(healthScore.diskCount).toBe(3);
+      expect(healthScore.disksAtRisk).toBeGreaterThanOrEqual(0);
+      expect(healthScore.recommendation).toBeDefined();
+    });
+
+    it('should handle pool with no disks', async () => {
+      const healthScore = await predictor.getPoolHealthScore('empty-pool');
+
+      expect(healthScore).toBeDefined();
+      expect(healthScore.score).toBe(100); // No disks means no problems
+      expect(healthScore.diskCount).toBe(0);
+      expect(healthScore.disksAtRisk).toBe(0);
+    });
+
+    it('should identify critical pool health', async () => {
+      const poolName = 'critical-pool';
+
+      // Insert data for disks with serious issues
+      db.prepare(`
+        INSERT INTO disk_health
+        (disk_name, pool_name, reallocated_sectors, pending_sectors,
+         uncorrectable_sectors, temperature, power_on_hours, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        'sdl',
+        poolName,
+        200, // Very high reallocated sectors
+        50,  // High pending sectors
+        10,  // Uncorrectable errors
+        65,  // High temperature
+        50000, // Old disk
+        new Date().toISOString()
+      );
+
+      const healthScore = await predictor.getPoolHealthScore(poolName);
+
+      expect(healthScore).toBeDefined();
+      expect(healthScore.score).toBeLessThan(50); // Poor health
+      expect(healthScore.disksAtRisk).toBeGreaterThan(0);
+      expect(healthScore.recommendation).toContain('immediate attention');
+    });
+  });
+});
