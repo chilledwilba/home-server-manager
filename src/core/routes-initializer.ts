@@ -9,7 +9,7 @@ import type { SecurityOrchestrator } from '../services/security/orchestrator.js'
 import type { InfrastructureManager } from '../services/infrastructure/manager.js';
 import { monitoringRoutes } from '../routes/monitoring.js';
 import { dockerRoutes } from '../routes/docker.js';
-import { securityRoutes } from '../routes/security.js';
+import { securityRoutes } from '../routes/security/index.js';
 import { zfsRoutes } from '../routes/zfs.js';
 import { notificationRoutes } from '../routes/notifications.js';
 import { remediationRoutes } from '../routes/remediation.js';
