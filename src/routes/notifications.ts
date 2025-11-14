@@ -1,73 +1,60 @@
 import type { FastifyInstance } from 'fastify';
-import { ServiceUnavailableError, ExternalServiceError } from '../utils/error-types.js';
+import type { NotificationService } from '../services/alerting/notification-service.js';
+import { withService, formatSuccess, extractBody } from '../utils/route-helpers.js';
+import { ExternalServiceError } from '../utils/error-types.js';
 
 /**
  * Notification routes
  */
 // eslint-disable-next-line @typescript-eslint/require-await
 export async function notificationRoutes(fastify: FastifyInstance): Promise<void> {
-  // Get notification history
-  fastify.get('/api/notifications/history', async () => {
-    try {
-      const notificationService = (
-        fastify as { notificationService?: { getNotificationHistory: (limit?: number) => unknown } }
-      ).notificationService;
-
-      if (!notificationService) {
-        throw new ServiceUnavailableError('Notification service not initialized');
+  /**
+   * GET /api/notifications/history
+   * Get notification history
+   */
+  fastify.get(
+    '/api/notifications/history',
+    withService<NotificationService>('notificationService', async (notificationService) => {
+      try {
+        const history = notificationService.getNotificationHistory();
+        return formatSuccess(history);
+      } catch (error) {
+        throw new ExternalServiceError('Notifications', 'Failed to fetch notification history', {
+          original: error instanceof Error ? error.message : String(error),
+        });
       }
+    }),
+  );
 
-      const history = notificationService.getNotificationHistory();
-      return { success: true, data: history, timestamp: new Date().toISOString() };
-    } catch (error) {
-      if (error instanceof ServiceUnavailableError) {
-        throw error;
-      }
-      throw new ExternalServiceError('Notifications', 'Failed to fetch notification history', {
-        original: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
+  /**
+   * POST /api/notifications/test
+   * Send a test notification
+   */
+  fastify.post(
+    '/api/notifications/test',
+    withService<NotificationService>(
+      'notificationService',
+      async (notificationService, request) => {
+        try {
+          const { channel } = extractBody<{ channel?: string }>(request.body);
 
-  // Test notification
-  fastify.post('/api/notifications/test', async (request) => {
-    try {
-      const notificationService = (
-        fastify as {
-          notificationService?: {
-            sendAlert: (alert: unknown, channels?: string[]) => Promise<void>;
-          };
+          await notificationService.sendAlert(
+            {
+              id: 0,
+              type: 'test',
+              severity: 'info',
+              message: 'Test notification from Home Server Monitor',
+            },
+            channel ? [channel] : undefined,
+          );
+
+          return formatSuccess(null, 'Test notification sent');
+        } catch (error) {
+          throw new ExternalServiceError('Notifications', 'Failed to send test notification', {
+            original: error instanceof Error ? error.message : String(error),
+          });
         }
-      ).notificationService;
-
-      if (!notificationService) {
-        throw new ServiceUnavailableError('Notification service not initialized');
-      }
-
-      const { channel } = request.body as { channel?: string };
-
-      await notificationService.sendAlert(
-        {
-          id: 0,
-          type: 'test',
-          severity: 'info',
-          message: 'Test notification from Home Server Monitor',
-        },
-        channel ? [channel] : undefined,
-      );
-
-      return {
-        success: true,
-        message: 'Test notification sent',
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      if (error instanceof ServiceUnavailableError) {
-        throw error;
-      }
-      throw new ExternalServiceError('Notifications', 'Failed to send test notification', {
-        original: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
+      },
+    ),
+  );
 }
