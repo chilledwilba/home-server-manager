@@ -60,12 +60,10 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
 
         const metrics = db
           .prepare(
-            `
-      SELECT * FROM arr_performance_metrics
+            `SELECT * FROM arr_performance_metrics
       WHERE app_name = ?
       ORDER BY calculated_at DESC
-      LIMIT 24
-    `,
+      LIMIT 24`,
           )
           .all(app);
 

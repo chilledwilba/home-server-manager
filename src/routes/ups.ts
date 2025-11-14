@@ -71,12 +71,10 @@ export async function upsRoutes(
     if (!db) {
       return { success: false, error: 'Database not available' };
     }
-    const stmt = db.prepare(`
-      SELECT * FROM ups_metrics
+    const stmt = db.prepare(`SELECT * FROM ups_metrics
       WHERE timestamp > datetime('now', '-${hours} hours')
       ORDER BY timestamp DESC
-      LIMIT 1000
-    `);
+      LIMIT 1000`);
 
     const metrics = stmt.all();
 
@@ -102,11 +100,9 @@ export async function upsRoutes(
     if (!db) {
       return { success: false, error: 'Database not available' };
     }
-    const stmt = db.prepare(`
-      SELECT * FROM ups_events
+    const stmt = db.prepare(`SELECT * FROM ups_events
       WHERE timestamp > datetime('now', '-${days} days')
-      ORDER BY timestamp DESC
-    `);
+      ORDER BY timestamp DESC`);
 
     const events = stmt.all();
 
@@ -128,8 +124,7 @@ export async function upsRoutes(
     if (!db) {
       return { success: false, error: 'Database not available' };
     }
-    const stmt = db.prepare(`
-      SELECT
+    const stmt = db.prepare(`SELECT
         DATE(timestamp) as date,
         AVG(battery_charge) as avg_charge,
         MIN(battery_charge) as min_charge,
@@ -138,8 +133,7 @@ export async function upsRoutes(
       FROM ups_metrics
       WHERE timestamp > datetime('now', '-30 days')
       GROUP BY DATE(timestamp)
-      ORDER BY date ASC
-    `);
+      ORDER BY date ASC`);
 
     const healthTrend = stmt.all();
 
