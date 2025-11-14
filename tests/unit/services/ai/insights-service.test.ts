@@ -224,19 +224,24 @@ describe('AIInsightsService', () => {
     });
 
     it('should store anomalies in database', async () => {
-      // Insert anomalous CPU data
+      // Insert an anomalous high CPU reading
       db.prepare(
         `
         INSERT INTO metrics (timestamp, cpu_percent, ram_percent)
         VALUES (?, ?, ?)
       `,
-      ).run(new Date().toISOString(), 98, 55);
+      ).run(new Date().toISOString(), 95, 55);
 
-      await service.detectAnomalies(24);
+      const result = await service.detectAnomalies(24);
 
+      // Verify anomalies were detected
+      expect(result.detected).toBe(true);
+      expect(result.anomalies.length).toBeGreaterThan(0);
+
+      // Verify anomalies were stored in database
       const storedAnomalies = db.prepare('SELECT * FROM anomaly_history').all();
       expect(Array.isArray(storedAnomalies)).toBe(true);
-      expect(storedAnomalies.length).toBeGreaterThan(0);
+      expect(storedAnomalies.length).toBe(result.anomalies.length);
     });
   });
 

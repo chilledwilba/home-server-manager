@@ -88,13 +88,11 @@ export class HealthMonitor {
   /**
    * Check health of all services
    */
-  private async checkAllServices(): Promise<void> {
-    await Promise.allSettled([
-      this.checkDatabase(),
-      this.checkTrueNAS(),
-      this.checkPortainer(),
-      this.checkMonitoringServices(),
-    ]);
+  private checkAllServices(): void {
+    this.checkDatabase();
+    void this.checkTrueNAS();
+    void this.checkPortainer();
+    void this.checkMonitoringServices();
   }
 
   /**

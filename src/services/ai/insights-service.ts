@@ -45,7 +45,6 @@ export class AIInsightsService {
       model: string;
     },
   ) {
-
     if (ollamaConfig) {
       this.ollama = new OllamaClient(ollamaConfig);
       this.ollamaEnabled = true;
