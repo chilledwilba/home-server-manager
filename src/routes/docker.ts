@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { DockerMonitor } from '../services/monitoring/docker-monitor.js';
+import { formatSuccess, extractParams } from '../utils/route-helpers.js';
 import { ExternalServiceError, NotFoundError } from '../utils/error-types.js';
 
 // eslint-disable-next-line @typescript-eslint/require-await
@@ -11,15 +12,14 @@ export async function dockerRoutes(
 ): Promise<void> {
   const { monitor } = options;
 
-  // Get all containers
+  /**
+   * GET /containers
+   * Get all Docker containers
+   */
   fastify.get('/containers', async () => {
     try {
       const containers = await monitor.getContainers();
-      return {
-        success: true,
-        data: containers,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(containers);
     } catch (error) {
       throw new ExternalServiceError('Docker', 'Failed to fetch containers', {
         original: error instanceof Error ? error.message : String(error),
@@ -27,23 +27,22 @@ export async function dockerRoutes(
     }
   });
 
-  // Get container stats
+  /**
+   * GET /containers/:id/stats
+   * Get statistics for a specific container
+   */
   fastify.get<{
     Params: { id: string };
   }>('/containers/:id/stats', async (request) => {
     try {
-      const { id } = request.params;
+      const { id } = extractParams<{ id: string }>(request.params);
       const stats = await monitor.getContainerStats(id);
 
       if (!stats) {
         throw new NotFoundError('Container', id);
       }
 
-      return {
-        success: true,
-        data: stats,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(stats);
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw error;
@@ -54,28 +53,28 @@ export async function dockerRoutes(
     }
   });
 
-  // Get Arr app status
+  /**
+   * GET /arr/:app
+   * Get status for a specific Arr application (Sonarr, Radarr, etc.)
+   */
   fastify.get<{
     Params: { app: string };
   }>('/arr/:app', async (request) => {
     try {
-      const { app } = request.params;
+      const { app } = extractParams<{ app: string }>(request.params);
       const status = await monitor.getArrStatus(app);
 
       if (!status) {
         throw new NotFoundError('Arr application', app);
       }
 
-      return {
-        success: true,
-        data: status,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(status);
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw error;
       }
-      throw new ExternalServiceError('Arr', `Failed to fetch ${request.params.app} status`, {
+      const { app } = extractParams<{ app: string }>(request.params);
+      throw new ExternalServiceError('Arr', `Failed to fetch ${app} status`, {
         original: error instanceof Error ? error.message : String(error),
       });
     }
