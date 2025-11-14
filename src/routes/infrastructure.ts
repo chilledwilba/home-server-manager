@@ -1,6 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { InfrastructureManager } from '../services/infrastructure/manager.js';
 import { createLogger } from '../utils/logger.js';
+import {
+  ServiceUnavailableError,
+  DatabaseError,
+  ExternalServiceError,
+  NotFoundError,
+  ValidationError,
+} from '../utils/error-types.js';
 
 const logger = createLogger('infrastructure-routes');
 
@@ -24,11 +31,12 @@ export async function infrastructureRoutes(
       };
     } catch (error) {
       logger.error({ err: error }, 'Failed to analyze infrastructure');
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to analyze infrastructure',
-        timestamp: new Date().toISOString(),
-      };
+      if (error instanceof ServiceUnavailableError || error instanceof NotFoundError) {
+        throw error;
+      }
+      throw new ExternalServiceError('Infrastructure', 'Failed to analyze infrastructure', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
@@ -50,11 +58,12 @@ export async function infrastructureRoutes(
       };
     } catch (error) {
       logger.error({ err: error }, 'Failed to list services');
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to list services',
-        timestamp: new Date().toISOString(),
-      };
+      if (error instanceof ServiceUnavailableError || error instanceof NotFoundError) {
+        throw error;
+      }
+      throw new ExternalServiceError('Infrastructure', 'Failed to list services', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
@@ -72,11 +81,7 @@ export async function infrastructureRoutes(
       );
 
       if (!service) {
-        return {
-          success: false,
-          error: `Service '${name}' not found`,
-          timestamp: new Date().toISOString(),
-        };
+        throw new NotFoundError(`Service '${name}' not found`);
       }
 
       return {
@@ -86,11 +91,16 @@ export async function infrastructureRoutes(
       };
     } catch (error) {
       logger.error({ err: error }, 'Failed to get service details');
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get service details',
-        timestamp: new Date().toISOString(),
-      };
+      if (
+        error instanceof ServiceUnavailableError ||
+        error instanceof NotFoundError ||
+        error instanceof ValidationError
+      ) {
+        throw error;
+      }
+      throw new ExternalServiceError('Infrastructure', 'Failed to get service details', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
@@ -108,13 +118,9 @@ export async function infrastructureRoutes(
       if (env) {
         try {
           envVars = JSON.parse(env) as Record<string, string>;
-        } catch (error) {
-          logger.error({ err: error, env }, 'Failed to parse environment variables JSON');
-          return {
-            success: false,
-            error: 'Invalid environment variables JSON',
-            timestamp: new Date().toISOString(),
-          };
+        } catch (parseError) {
+          logger.error({ err: parseError, env }, 'Failed to parse environment variables JSON');
+          throw new ValidationError('Invalid environment variables JSON');
         }
       }
 
@@ -130,11 +136,16 @@ export async function infrastructureRoutes(
       };
     } catch (error) {
       logger.error({ err: error }, 'Failed to generate docker-compose');
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate docker-compose',
-        timestamp: new Date().toISOString(),
-      };
+      if (
+        error instanceof ServiceUnavailableError ||
+        error instanceof NotFoundError ||
+        error instanceof ValidationError
+      ) {
+        throw error;
+      }
+      throw new ExternalServiceError('Infrastructure', 'Failed to generate docker-compose', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
@@ -151,11 +162,7 @@ export async function infrastructureRoutes(
       const { serviceName, stackName, envVars, autoStart } = request.body;
 
       if (!serviceName) {
-        return {
-          success: false,
-          error: 'serviceName is required',
-          timestamp: new Date().toISOString(),
-        };
+        throw new ValidationError('serviceName is required');
       }
 
       logger.info(`Deploying service: ${serviceName}`);
@@ -170,21 +177,30 @@ export async function infrastructureRoutes(
         logger.info({ stackId: result.stackId }, `Service deployed successfully: ${serviceName}`);
       } else {
         logger.error({ err: result.error }, `Failed to deploy service: ${serviceName}`);
+        throw new ExternalServiceError(
+          'Infrastructure',
+          `Failed to deploy service: ${result.error || 'Unknown error'}`,
+        );
       }
 
       return {
         success: result.success,
         data: result.stackId ? { stackId: result.stackId } : undefined,
-        error: result.error,
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       logger.error({ err: error }, 'Failed to deploy service');
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to deploy service',
-        timestamp: new Date().toISOString(),
-      };
+      if (
+        error instanceof ServiceUnavailableError ||
+        error instanceof NotFoundError ||
+        error instanceof ValidationError ||
+        error instanceof ExternalServiceError
+      ) {
+        throw error;
+      }
+      throw new ExternalServiceError('Infrastructure', 'Failed to deploy service', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
@@ -203,21 +219,29 @@ export async function infrastructureRoutes(
         logger.info(`Service removed successfully: ${name}`);
       } else {
         logger.error({ err: result.error }, `Failed to remove service: ${name}`);
+        throw new ExternalServiceError(
+          'Infrastructure',
+          `Failed to remove service: ${result.error || 'Unknown error'}`,
+        );
       }
 
       return {
         success: result.success,
-        error: result.error,
         message: result.success ? `Service '${name}' removed successfully` : undefined,
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       logger.error({ err: error }, 'Failed to remove service');
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to remove service',
-        timestamp: new Date().toISOString(),
-      };
+      if (
+        error instanceof ServiceUnavailableError ||
+        error instanceof NotFoundError ||
+        error instanceof ExternalServiceError
+      ) {
+        throw error;
+      }
+      throw new ExternalServiceError('Infrastructure', 'Failed to remove service', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
@@ -227,11 +251,7 @@ export async function infrastructureRoutes(
       const db = (fastify as { db?: { prepare: (sql: string) => { all: () => unknown[] } } }).db;
 
       if (!db) {
-        return {
-          success: false,
-          error: 'Database not available',
-          timestamp: new Date().toISOString(),
-        };
+        throw new ServiceUnavailableError('Database not available');
       }
 
       const deployments = db
@@ -254,11 +274,12 @@ export async function infrastructureRoutes(
       };
     } catch (error) {
       logger.error({ err: error }, 'Failed to get deployment history');
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get deployment history',
-        timestamp: new Date().toISOString(),
-      };
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to get deployment history', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
@@ -272,11 +293,7 @@ export async function infrastructureRoutes(
       const { serviceName } = request.body;
 
       if (!serviceName) {
-        return {
-          success: false,
-          error: 'serviceName is required',
-          timestamp: new Date().toISOString(),
-        };
+        throw new ValidationError('serviceName is required');
       }
 
       const validation = manager.validateDeployment(serviceName);
@@ -288,11 +305,16 @@ export async function infrastructureRoutes(
       };
     } catch (error) {
       logger.error({ err: error }, 'Failed to validate deployment');
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to validate deployment',
-        timestamp: new Date().toISOString(),
-      };
+      if (
+        error instanceof ServiceUnavailableError ||
+        error instanceof NotFoundError ||
+        error instanceof ValidationError
+      ) {
+        throw error;
+      }
+      throw new ExternalServiceError('Infrastructure', 'Failed to validate deployment', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 }

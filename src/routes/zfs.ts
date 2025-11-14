@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { ServiceUnavailableError, ExternalServiceError } from '../utils/error-types.js';
 
 const CreateSnapshotSchema = z.object({
   poolName: z.string(),
@@ -33,14 +34,24 @@ const DiagnoseIssueSchema = z.object({
 export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
   // Get snapshot statistics
   fastify.get('/api/zfs/snapshots/stats', async () => {
-    const zfsManager = (fastify as { zfsManager?: { getSnapshotStats: () => unknown } }).zfsManager;
+    try {
+      const zfsManager = (fastify as { zfsManager?: { getSnapshotStats: () => unknown } })
+        .zfsManager;
 
-    if (!zfsManager) {
-      return { success: false, error: 'ZFS manager not initialized' };
+      if (!zfsManager) {
+        throw new ServiceUnavailableError('ZFS manager not initialized');
+      }
+
+      const stats = zfsManager.getSnapshotStats();
+      return { success: true, data: stats, timestamp: new Date().toISOString() };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new ExternalServiceError('Failed to retrieve snapshot statistics', 'ZFS', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
-
-    const stats = zfsManager.getSnapshotStats();
-    return { success: true, data: stats, timestamp: new Date().toISOString() };
   });
 
   // Create manual snapshot
@@ -52,64 +63,100 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
       },
     },
     async (request) => {
-      const zfsManager = (
-        fastify as {
-          zfsManager?: {
-            createManualSnapshot: (poolName: string, reason: string) => Promise<unknown>;
-          };
+      try {
+        const zfsManager = (
+          fastify as {
+            zfsManager?: {
+              createManualSnapshot: (poolName: string, reason: string) => Promise<unknown>;
+            };
+          }
+        ).zfsManager;
+
+        if (!zfsManager) {
+          throw new ServiceUnavailableError('ZFS manager not initialized');
         }
-      ).zfsManager;
 
-      if (!zfsManager) {
-        return { success: false, error: 'ZFS manager not initialized' };
+        const { poolName, reason } = request.body as z.infer<typeof CreateSnapshotSchema>;
+        const result = await zfsManager.createManualSnapshot(poolName, reason);
+        return result;
+      } catch (error) {
+        if (error instanceof ServiceUnavailableError) {
+          throw error;
+        }
+        throw new ExternalServiceError('Failed to create snapshot', 'ZFS', {
+          original: error instanceof Error ? error.message : String(error),
+        });
       }
-
-      const { poolName, reason } = request.body as z.infer<typeof CreateSnapshotSchema>;
-      const result = await zfsManager.createManualSnapshot(poolName, reason);
-      return result;
     },
   );
 
   // Get scrub history
   fastify.get('/api/zfs/scrubs/history', async (request) => {
-    const zfsManager = (
-      fastify as { zfsManager?: { getScrubHistory: (poolName?: string) => unknown } }
-    ).zfsManager;
+    try {
+      const zfsManager = (
+        fastify as { zfsManager?: { getScrubHistory: (poolName?: string) => unknown } }
+      ).zfsManager;
 
-    if (!zfsManager) {
-      return { success: false, error: 'ZFS manager not initialized' };
+      if (!zfsManager) {
+        throw new ServiceUnavailableError('ZFS manager not initialized');
+      }
+
+      const { poolName } = request.query as { poolName?: string };
+      const history = zfsManager.getScrubHistory(poolName);
+      return { success: true, data: history, timestamp: new Date().toISOString() };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new ExternalServiceError('Failed to retrieve scrub history', 'ZFS', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
-
-    const { poolName } = request.query as { poolName?: string };
-    const history = zfsManager.getScrubHistory(poolName);
-    return { success: true, data: history, timestamp: new Date().toISOString() };
   });
 
   // Get backup history
   fastify.get('/api/zfs/backups/history', async () => {
-    const zfsManager = (
-      fastify as { zfsManager?: { getBackupHistory: (limit?: number) => unknown } }
-    ).zfsManager;
+    try {
+      const zfsManager = (
+        fastify as { zfsManager?: { getBackupHistory: (limit?: number) => unknown } }
+      ).zfsManager;
 
-    if (!zfsManager) {
-      return { success: false, error: 'ZFS manager not initialized' };
+      if (!zfsManager) {
+        throw new ServiceUnavailableError('ZFS manager not initialized');
+      }
+
+      const history = zfsManager.getBackupHistory();
+      return { success: true, data: history, timestamp: new Date().toISOString() };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new ExternalServiceError('Failed to retrieve backup history', 'ZFS', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
-
-    const history = zfsManager.getBackupHistory();
-    return { success: true, data: history, timestamp: new Date().toISOString() };
   });
 
   // Get ZFS recommendations
   fastify.get('/api/zfs/recommendations', async () => {
-    const zfsManager = (fastify as { zfsManager?: { getRecommendations: () => unknown } })
-      .zfsManager;
+    try {
+      const zfsManager = (fastify as { zfsManager?: { getRecommendations: () => unknown } })
+        .zfsManager;
 
-    if (!zfsManager) {
-      return { success: false, error: 'ZFS manager not initialized' };
+      if (!zfsManager) {
+        throw new ServiceUnavailableError('ZFS manager not initialized');
+      }
+
+      const recommendations = zfsManager.getRecommendations();
+      return { success: true, data: recommendations, timestamp: new Date().toISOString() };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new ExternalServiceError('Failed to retrieve ZFS recommendations', 'ZFS', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
-
-    const recommendations = zfsManager.getRecommendations();
-    return { success: true, data: recommendations, timestamp: new Date().toISOString() };
   });
 
   // Explain ZFS concept
@@ -121,39 +168,61 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
       },
     },
     async (request) => {
-      const zfsAssistant = (
-        fastify as { zfsAssistant?: { explainConcept: (concept: string) => string } }
-      ).zfsAssistant;
+      try {
+        const zfsAssistant = (
+          fastify as { zfsAssistant?: { explainConcept: (concept: string) => string } }
+        ).zfsAssistant;
 
-      if (!zfsAssistant) {
-        return { success: false, error: 'ZFS assistant not initialized' };
+        if (!zfsAssistant) {
+          throw new ServiceUnavailableError('ZFS assistant not initialized');
+        }
+
+        const { concept } = request.body as z.infer<typeof ExplainConceptSchema>;
+        const explanation = zfsAssistant.explainConcept(concept);
+        return {
+          success: true,
+          data: { concept, explanation },
+          timestamp: new Date().toISOString(),
+        };
+      } catch (error) {
+        if (error instanceof ServiceUnavailableError) {
+          throw error;
+        }
+        throw new ExternalServiceError('Failed to explain ZFS concept', 'ZFS', {
+          original: error instanceof Error ? error.message : String(error),
+        });
       }
-
-      const { concept } = request.body as z.infer<typeof ExplainConceptSchema>;
-      const explanation = zfsAssistant.explainConcept(concept);
-      return { success: true, data: { concept, explanation }, timestamp: new Date().toISOString() };
     },
   );
 
   // Get pool recommendations
   fastify.get('/api/zfs/pool-recommendations/:poolName', async (request) => {
-    const zfsAssistant = (
-      fastify as {
-        zfsAssistant?: { getPoolRecommendations: (poolConfig: { name: string }) => string[] };
+    try {
+      const zfsAssistant = (
+        fastify as {
+          zfsAssistant?: { getPoolRecommendations: (poolConfig: { name: string }) => string[] };
+        }
+      ).zfsAssistant;
+
+      if (!zfsAssistant) {
+        throw new ServiceUnavailableError('ZFS assistant not initialized');
       }
-    ).zfsAssistant;
 
-    if (!zfsAssistant) {
-      return { success: false, error: 'ZFS assistant not initialized' };
+      const { poolName } = request.params as { poolName: string };
+      const recommendations = zfsAssistant.getPoolRecommendations({ name: poolName });
+      return {
+        success: true,
+        data: { pool: poolName, recommendations },
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new ExternalServiceError('Failed to retrieve pool recommendations', 'ZFS', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
-
-    const { poolName } = request.params as { poolName: string };
-    const recommendations = zfsAssistant.getPoolRecommendations({ name: poolName });
-    return {
-      success: true,
-      data: { pool: poolName, recommendations },
-      timestamp: new Date().toISOString(),
-    };
   });
 
   // Diagnose issue
@@ -165,38 +234,56 @@ export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
       },
     },
     async (request) => {
-      const zfsAssistant = (
-        fastify as {
-          zfsAssistant?: {
-            diagnoseIssue: (
-              issue: string,
-              poolData: unknown,
-              systemData: unknown,
-            ) => Promise<string>;
-          };
+      try {
+        const zfsAssistant = (
+          fastify as {
+            zfsAssistant?: {
+              diagnoseIssue: (
+                issue: string,
+                poolData: unknown,
+                systemData: unknown,
+              ) => Promise<string>;
+            };
+          }
+        ).zfsAssistant;
+
+        if (!zfsAssistant) {
+          throw new ServiceUnavailableError('ZFS assistant not initialized');
         }
-      ).zfsAssistant;
 
-      if (!zfsAssistant) {
-        return { success: false, error: 'ZFS assistant not initialized' };
+        const { issue, poolData, systemData } = request.body as z.infer<typeof DiagnoseIssueSchema>;
+        const diagnosis = await zfsAssistant.diagnoseIssue(issue, poolData, systemData);
+        return { success: true, data: { diagnosis }, timestamp: new Date().toISOString() };
+      } catch (error) {
+        if (error instanceof ServiceUnavailableError) {
+          throw error;
+        }
+        throw new ExternalServiceError('Failed to diagnose ZFS issue', 'ZFS', {
+          original: error instanceof Error ? error.message : String(error),
+        });
       }
-
-      const { issue, poolData, systemData } = request.body as z.infer<typeof DiagnoseIssueSchema>;
-      const diagnosis = await zfsAssistant.diagnoseIssue(issue, poolData, systemData);
-      return { success: true, data: { diagnosis }, timestamp: new Date().toISOString() };
     },
   );
 
   // Get best practices
   fastify.get('/api/zfs/best-practices', async () => {
-    const zfsAssistant = (fastify as { zfsAssistant?: { getBestPractices: () => unknown } })
-      .zfsAssistant;
+    try {
+      const zfsAssistant = (fastify as { zfsAssistant?: { getBestPractices: () => unknown } })
+        .zfsAssistant;
 
-    if (!zfsAssistant) {
-      return { success: false, error: 'ZFS assistant not initialized' };
+      if (!zfsAssistant) {
+        throw new ServiceUnavailableError('ZFS assistant not initialized');
+      }
+
+      const practices = zfsAssistant.getBestPractices();
+      return { success: true, data: practices, timestamp: new Date().toISOString() };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new ExternalServiceError('Failed to retrieve ZFS best practices', 'ZFS', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
-
-    const practices = zfsAssistant.getBestPractices();
-    return { success: true, data: practices, timestamp: new Date().toISOString() };
   });
 }
