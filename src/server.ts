@@ -31,6 +31,8 @@ import { notificationRoutes } from './routes/notifications.js';
 import { remediationRoutes } from './routes/remediation.js';
 import { arrRoutes } from './routes/arr.js';
 import { infrastructureRoutes } from './routes/infrastructure.js';
+import { errorHandler } from './middleware/error-handler.js';
+import { registerRequestLogging } from './middleware/request-logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,6 +63,9 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
     privacy: 'private',
     expiresIn: 30, // 30 seconds default
   });
+
+  // Register request logging middleware
+  registerRequestLogging(fastify);
 
   // Initialize database
   const db = getDatabase();
@@ -468,6 +473,10 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
       logger.error({ err: error }, 'Failed to register AI insights routes');
     }
   }
+
+  // Register error handler (must be after all routes)
+  fastify.setErrorHandler(errorHandler);
+  logger.info('Error handler middleware registered');
 
   // Enhanced health check endpoint with actual connectivity tests
   fastify.get('/health', async (_request, reply) => {
