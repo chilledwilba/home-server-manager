@@ -1668,24 +1668,94 @@ volumes:
 - Socket.IO client
 - Expo Notifications
 
-### 6.5 AI-Powered Insights
+### 6.5 AI-Powered Insights ✅ COMPLETE
 
 **Duration**: 8-12 hours
+**Status**: ✅ **COMPLETE** (2025-11-14)
 
-**Action**: Enhance ML capabilities
+**Action**: Enhance ML capabilities with AI-powered system analysis
 
-**Features**:
+**Completed Implementation**:
 
-- Anomaly detection
-- Capacity planning predictions
-- Cost optimization recommendations
-- Performance trend analysis
+- ✅ AI insights service with Ollama integration ([src/services/ai/insights-service.ts](src/services/ai/insights-service.ts))
+- ✅ Statistical anomaly detection using z-scores and deviation analysis
+- ✅ Capacity planning with linear regression predictions
+- ✅ Cost optimization analysis with actionable recommendations
+- ✅ Performance trend analysis with degradation detection
+- ✅ Comprehensive API routes ([src/routes/ai-insights.ts](src/routes/ai-insights.ts))
+- ✅ Database schema for AI insights, anomaly history, and capacity predictions
+- ✅ Works with or without Ollama (statistical analysis always available)
+- ✅ Comprehensive test suite ([tests/unit/services/ai/insights-service.test.ts](tests/unit/services/ai/insights-service.test.ts))
 
-**Libraries**:
+**Features Achieved**:
+
+1. **Anomaly Detection**:
+   - CPU usage spike/drop detection using standard deviation
+   - Memory pressure detection with critical threshold alerts
+   - Pool capacity warnings at 85%+ usage
+   - Disk health monitoring (reallocated sectors, pending sectors)
+   - Automated anomaly history tracking
+
+2. **Capacity Planning Predictions**:
+   - Linear regression-based growth rate calculation
+   - Storage capacity predictions with days-until-full estimation
+   - Memory usage trend analysis
+   - Confidence scoring based on data availability
+   - Actionable recommendations when capacity warnings detected
+
+3. **Cost Optimization Recommendations**:
+   - Storage optimization (snapshot cleanup, data archival)
+   - Compute optimization (idle container detection)
+   - Power optimization (CPU power saving suggestions)
+   - Estimated monthly cost calculations
+   - ROI-based implementation priority
+
+4. **Performance Trend Analysis**:
+   - 30-day performance trend tracking
+   - CPU, memory, storage, and disk temperature trends
+   - Trend classification (improving, stable, degrading, volatile)
+   - Statistical analysis (mean, variance, standard deviation)
+   - Degradation alerts with mitigation recommendations
+
+5. **AI Integration (Optional)**:
+   - Ollama LLM integration for advanced analysis
+   - Context-aware recommendations
+   - Natural language insights generation
+   - Configurable models (llama2:13b, mistral:7b, etc.)
+   - Graceful fallback to statistical analysis when Ollama unavailable
+
+**API Endpoints**:
+
+- `GET /api/ai/insights` - Generate fresh AI insights
+- `GET /api/ai/insights/cached` - Get cached insights (fast)
+- `GET /api/ai/anomalies` - Detect system anomalies
+- `GET /api/ai/anomalies/history` - Historical anomaly data
+- `GET /api/ai/capacity` - Capacity predictions
+- `GET /api/ai/capacity/history` - Historical predictions
+- `GET /api/ai/cost-optimization` - Cost optimization opportunities
+- `GET /api/ai/performance-trends` - Performance trend analysis
+- `POST /api/ai/insights/:id/dismiss` - Dismiss an insight
+- `DELETE /api/ai/insights/expired` - Clean up expired insights
+- `GET /api/ai/status` - AI service status and configuration
+
+**Benefits Achieved**:
+
+- Proactive issue detection before failures occur
+- Data-driven capacity planning reduces emergency upgrades
+- Cost savings through optimization recommendations
+- Performance regression detection and remediation
+- Reduced manual monitoring burden
+- AI-enhanced insights when Ollama is available
+- Always-available statistical analysis
+
+**Configuration** (.env.example):
 
 ```bash
-npm install ml-regression ml-matrix
-npm install @tensorflow/tfjs-node
+# Ollama AI Configuration (Optional - Phase 6.5)
+OLLAMA_HOST=localhost
+OLLAMA_PORT=11434
+OLLAMA_MODEL=llama2:13b
+OLLAMA_ENABLED=false  # Set to 'true' to enable AI-enhanced insights
 ```
 
 ### 6.6 Multi-Server Support
@@ -1707,11 +1777,11 @@ npm install @tensorflow/tfjs-node
 - [x] Enhanced dashboard deployed (✅ COMPLETE - commit 052ddf6)
 - [ ] Grafana monitoring stack (optional - future)
 - [ ] Mobile app developed (optional - future)
-- [ ] AI insights added (optional - future)
+- [x] AI insights added (✅ COMPLETE - 2025-11-14)
 - [ ] Multi-server support (optional - future)
 - [x] Changes committed with descriptive messages
 
-**Phase 6 Progress**: 2 of 6 optional features complete (33%)
+**Phase 6 Progress**: 3 of 6 optional features complete (50%)
 
 ---
 
@@ -1749,7 +1819,8 @@ npm run build
 | Phase 5: Prod Readiness    | 🟢 Complete    | P2       | 5h       | Week 1   | 2025-11-12 |
 | Phase 6: Enhancements      | 🟡 In Progress | P3       | 16-24h   | Optional | 2025-11-12 |
 | ├─ 6.1: UPS Integration    | 🟢 Complete    | P3       | 4-6h     | Optional | 2025-11-12 |
-| └─ 6.2: Enhanced Dashboard | 🟢 Complete    | P3       | 8-12h    | Optional | 2025-11-12 |
+| ├─ 6.2: Enhanced Dashboard | 🟢 Complete    | P3       | 8-12h    | Optional | 2025-11-12 |
+| └─ 6.5: AI Insights        | 🟢 Complete    | P3       | 8-12h    | Optional | 2025-11-14 |
 
 ### Weekly Goals
 
@@ -1821,10 +1892,19 @@ npm run build
   - TanStack Query data fetching
   - Zustand state management
   - Component-based architecture
+- ✅ AI-Powered Insights (Phase 6.5) - Intelligent system analysis and predictions
+  - Statistical anomaly detection (CPU, memory, storage, disk health)
+  - Capacity planning with linear regression predictions
+  - Cost optimization recommendations
+  - Performance trend analysis (30-day trends)
+  - Ollama LLM integration for AI-enhanced insights
+  - Comprehensive API with 11 endpoints
+  - Database schema for insights, anomalies, and predictions
+  - Works with or without AI (statistical analysis always available)
 
 **Commits:**
 
-- ✅ 8+ commits pushed to main branch (including UPS integration)
+- ✅ 9+ commits pushed to main branch (including UPS, Dashboard, AI insights)
 
 ---
 
@@ -1915,9 +1995,9 @@ Before marking complete:
 ---
 
 **Created by**: Claude Code (Sonnet 4.5)
-**Last Updated**: 2025-11-12
-**Version**: 1.3
-**Status**: ✅ **PHASES 1-5 COMPLETE + Phase 6.1 (UPS) + 6.2 (Dashboard)** - Production Ready with Enhanced Features
+**Last Updated**: 2025-11-14
+**Version**: 1.4
+**Status**: ✅ **PHASES 1-5 COMPLETE + Phase 6.1 (UPS) + 6.2 (Dashboard) + 6.5 (AI Insights)** - Production Ready with AI-Enhanced Features
 
 ---
 
