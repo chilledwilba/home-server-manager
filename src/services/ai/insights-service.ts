@@ -83,11 +83,14 @@ export class AIInsightsService {
   private ollama: OllamaClient | null = null;
   private ollamaEnabled: boolean = false;
 
-  constructor(db: Database.Database, ollamaConfig?: {
-    host: string;
-    port: number;
-    model: string;
-  }) {
+  constructor(
+    db: Database.Database,
+    ollamaConfig?: {
+      host: string;
+      port: number;
+      model: string;
+    },
+  ) {
     this.db = db;
 
     if (ollamaConfig) {
@@ -316,9 +319,7 @@ export class AIInsightsService {
   /**
    * Analyze performance trends over time
    */
-  analyzePerformanceTrends(
-    periodDays: number = 30,
-  ): PerformanceTrend[] {
+  analyzePerformanceTrends(periodDays: number = 30): PerformanceTrend[] {
     logger.info(`Analyzing performance trends over ${periodDays} days...`);
 
     const trends: PerformanceTrend[] = [];
@@ -577,7 +578,12 @@ export class AIInsightsService {
     `,
       )
       .get(cutoffTime) as
-      | { disk_name: string; reallocated_sectors: number; pending_sectors: number; temperature: number }
+      | {
+          disk_name: string;
+          reallocated_sectors: number;
+          pending_sectors: number;
+          temperature: number;
+        }
       | undefined;
 
     if (!badDisks) return null;
@@ -596,9 +602,7 @@ export class AIInsightsService {
     };
   }
 
-  private predictResourceCapacity(
-    resource: string,
-  ): CapacityPrediction | null {
+  private predictResourceCapacity(resource: string): CapacityPrediction | null {
     try {
       if (resource === 'storage') {
         return this.predictStorageCapacity();
@@ -661,8 +665,9 @@ export class AIInsightsService {
       current_usage: latest.total_used,
       current_usage_percent: currentUsagePercent,
       growth_rate_per_day: growthRate,
-      predicted_full_date:
-        daysUntilFull ? new Date(Date.now() + daysUntilFull * 24 * 60 * 60 * 1000).toISOString() : null,
+      predicted_full_date: daysUntilFull
+        ? new Date(Date.now() + daysUntilFull * 24 * 60 * 60 * 1000).toISOString()
+        : null,
       days_until_full: daysUntilFull,
       confidence: dataPoints.length >= 30 ? 0.9 : 0.7,
       recommendations,
@@ -710,8 +715,9 @@ export class AIInsightsService {
       current_usage: latest.avg_percent,
       current_usage_percent: latest.avg_percent,
       growth_rate_per_day: growthRate,
-      predicted_full_date:
-        daysUntilFull ? new Date(Date.now() + daysUntilFull * 24 * 60 * 60 * 1000).toISOString() : null,
+      predicted_full_date: daysUntilFull
+        ? new Date(Date.now() + daysUntilFull * 24 * 60 * 60 * 1000).toISOString()
+        : null,
       days_until_full: daysUntilFull,
       confidence: 0.6,
       recommendations,
@@ -746,9 +752,7 @@ export class AIInsightsService {
       )
       .get() as { count: number } | undefined;
 
-    const totalStorageTB = poolStats?.total_storage
-      ? poolStats.total_storage / (1024 ** 4)
-      : 0;
+    const totalStorageTB = poolStats?.total_storage ? poolStats.total_storage / 1024 ** 4 : 0;
 
     // Rough power estimation (i5-12400 ~65W, 64GB RAM ~20W, disks ~5W each, overhead)
     const estimatedPowerWatts = 65 + 20 + totalStorageTB * 3 * 5 + (containerCount?.count || 0) * 2;
@@ -973,9 +977,7 @@ export class AIInsightsService {
       change_percent: 0,
       analysis: `Average memory usage is ${stats.avg.toFixed(1)}% over the last ${periodDays} days.`,
       recommendations:
-        stats.avg > 80
-          ? ['Consider adding more RAM', 'Review container memory limits']
-          : [],
+        stats.avg > 80 ? ['Consider adding more RAM', 'Review container memory limits'] : [],
     };
   }
 
@@ -1030,7 +1032,9 @@ export class AIInsightsService {
       WHERE timestamp > ? AND temperature IS NOT NULL
     `,
       )
-      .get(cutoffTime) as { avg: number | null; min: number | null; max: number | null } | undefined;
+      .get(cutoffTime) as
+      | { avg: number | null; min: number | null; max: number | null }
+      | undefined;
 
     if (!stats || stats.avg === null || stats.min === null || stats.max === null) return null;
 
@@ -1052,9 +1056,7 @@ export class AIInsightsService {
     };
   }
 
-  private async getAIAnomalyAnalysis(
-    anomalies: AnomalyDetection['anomalies'],
-  ): Promise<string> {
+  private async getAIAnomalyAnalysis(anomalies: AnomalyDetection['anomalies']): Promise<string> {
     if (!this.ollama) return 'AI analysis unavailable';
 
     const prompt = `Analyze these system anomalies and provide a concise summary:
@@ -1123,14 +1125,15 @@ Be specific and actionable.`;
 
   private calculateStdDev(table: string, column: string, cutoffTime: string): number {
     const data = this.db
-      .prepare(`SELECT ${column} as value FROM ${table} WHERE timestamp > ? AND ${column} IS NOT NULL`)
+      .prepare(
+        `SELECT ${column} as value FROM ${table} WHERE timestamp > ? AND ${column} IS NOT NULL`,
+      )
       .all(cutoffTime) as Array<{ value: number }>;
 
     if (data.length === 0) return 0;
 
     const mean = data.reduce((sum, d) => sum + d.value, 0) / data.length;
-    const variance =
-      data.reduce((sum, d) => sum + Math.pow(d.value - mean, 2), 0) / data.length;
+    const variance = data.reduce((sum, d) => sum + Math.pow(d.value - mean, 2), 0) / data.length;
 
     return Math.sqrt(variance);
   }
@@ -1150,7 +1153,9 @@ Be specific and actionable.`;
     return slope;
   }
 
-  private getMaxSeverity(severities: Array<'low' | 'medium' | 'high' | 'critical'>): 'info' | 'low' | 'medium' | 'high' | 'critical' {
+  private getMaxSeverity(
+    severities: Array<'low' | 'medium' | 'high' | 'critical'>,
+  ): 'info' | 'low' | 'medium' | 'high' | 'critical' {
     if (severities.includes('critical')) return 'critical';
     if (severities.includes('high')) return 'high';
     if (severities.includes('medium')) return 'medium';

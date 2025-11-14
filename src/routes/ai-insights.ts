@@ -38,7 +38,7 @@ export async function aiInsightsRoutes(
    * GET /api/ai/insights
    * Get all current AI-generated insights
    */
-  fastify.get('/api/ai/insights', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/ai/insights', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       logger.info('Fetching AI insights...');
 
@@ -64,13 +64,11 @@ export async function aiInsightsRoutes(
    * GET /api/ai/insights/cached
    * Get cached insights from database (fast)
    */
-  fastify.get(
-    '/api/ai/insights/cached',
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const cachedInsights = db
-          .prepare(
-            `
+  fastify.get('/api/ai/insights/cached', async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const cachedInsights = db
+        .prepare(
+          `
           SELECT *
           FROM ai_insights
           WHERE dismissed = 0
@@ -78,47 +76,46 @@ export async function aiInsightsRoutes(
           ORDER BY generated_at DESC
           LIMIT 50
         `,
-          )
-          .all() as Array<{
-          id: string;
-          type: string;
-          title: string;
-          summary: string;
-          details: string;
-          severity: string;
-          actionable: number;
-          actions: string;
-          generated_at: string;
-          expires_at: string | null;
-        }>;
+        )
+        .all() as Array<{
+        id: string;
+        type: string;
+        title: string;
+        summary: string;
+        details: string;
+        severity: string;
+        actionable: number;
+        actions: string;
+        generated_at: string;
+        expires_at: string | null;
+      }>;
 
-        const insights = cachedInsights.map((insight) => ({
-          ...insight,
-          actionable: insight.actionable === 1,
-          actions: JSON.parse(insight.actions || '[]'),
-        }));
+      const insights = cachedInsights.map((insight) => ({
+        ...insight,
+        actionable: insight.actionable === 1,
+        actions: JSON.parse(insight.actions || '[]'),
+      }));
 
-        return reply.send({
-          success: true,
-          data: insights,
-          count: insights.length,
-          cached: true,
-        });
-      } catch (error) {
-        logger.error({ err: error }, 'Failed to fetch cached insights');
-        return reply.code(500).send({
-          success: false,
-          error: 'Failed to fetch cached insights',
-        });
-      }
-    },
-  );
+      return reply.send({
+        success: true,
+        data: insights,
+        count: insights.length,
+        cached: true,
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to fetch cached insights');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to fetch cached insights',
+      });
+    }
+  });
 
   /**
    * GET /api/ai/anomalies
    * Detect anomalies in system metrics
    */
-  fastify.get('/api/ai/anomalies', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/ai/anomalies', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { lookback = '24' } = request.query as { lookback?: string };
       const lookbackHours = parseInt(lookback, 10);
@@ -155,7 +152,7 @@ export async function aiInsightsRoutes(
    */
   fastify.get(
     '/api/ai/anomalies/history',
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (_request: FastifyRequest, reply: FastifyReply) => {
       try {
         const { limit = '100', days = '7' } = request.query as { limit?: string; days?: string };
 
@@ -190,7 +187,7 @@ export async function aiInsightsRoutes(
    * GET /api/ai/capacity
    * Predict when resources will reach capacity
    */
-  fastify.get('/api/ai/capacity', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/ai/capacity', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { resource } = request.query as { resource?: string };
 
@@ -217,34 +214,31 @@ export async function aiInsightsRoutes(
    * GET /api/ai/capacity/history
    * Get historical capacity predictions
    */
-  fastify.get(
-    '/api/ai/capacity/history',
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const { resource, limit = '50' } = request.query as { resource?: string; limit?: string };
+  fastify.get('/api/ai/capacity/history', async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { resource, limit = '50' } = request.query as { resource?: string; limit?: string };
 
-        const query = resource
-          ? `SELECT * FROM capacity_predictions WHERE resource = ? ORDER BY predicted_at DESC LIMIT ?`
-          : `SELECT * FROM capacity_predictions ORDER BY predicted_at DESC LIMIT ?`;
+      const query = resource
+        ? `SELECT * FROM capacity_predictions WHERE resource = ? ORDER BY predicted_at DESC LIMIT ?`
+        : `SELECT * FROM capacity_predictions ORDER BY predicted_at DESC LIMIT ?`;
 
-        const history = resource
-          ? db.prepare(query).all(resource, limit)
-          : db.prepare(query).all(limit);
+      const history = resource
+        ? db.prepare(query).all(resource, limit)
+        : db.prepare(query).all(limit);
 
-        return reply.send({
-          success: true,
-          data: history,
-          count: Array.isArray(history) ? history.length : 0,
-        });
-      } catch (error) {
-        logger.error({ err: error }, 'Failed to fetch capacity history');
-        return reply.code(500).send({
-          success: false,
-          error: 'Failed to fetch capacity history',
-        });
-      }
-    },
-  );
+      return reply.send({
+        success: true,
+        data: history,
+        count: Array.isArray(history) ? history.length : 0,
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to fetch capacity history');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to fetch capacity history',
+      });
+    }
+  });
 
   /**
    * GET /api/ai/cost-optimization
@@ -252,7 +246,7 @@ export async function aiInsightsRoutes(
    */
   fastify.get(
     '/api/ai/cost-optimization',
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (_request: FastifyRequest, reply: FastifyReply) => {
       try {
         logger.info('Generating cost optimization recommendations...');
 
@@ -279,7 +273,7 @@ export async function aiInsightsRoutes(
    */
   fastify.get(
     '/api/ai/performance-trends',
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (_request: FastifyRequest, reply: FastifyReply) => {
       try {
         const { period = '30' } = request.query as { period?: string };
         const periodDays = parseInt(period, 10);
@@ -322,9 +316,7 @@ export async function aiInsightsRoutes(
       try {
         const { id } = request.params;
 
-        const result = db
-          .prepare('UPDATE ai_insights SET dismissed = 1 WHERE id = ?')
-          .run(id);
+        const result = db.prepare('UPDATE ai_insights SET dismissed = 1 WHERE id = ?').run(id);
 
         if (result.changes === 0) {
           return reply.code(404).send({
@@ -353,7 +345,7 @@ export async function aiInsightsRoutes(
    */
   fastify.delete(
     '/api/ai/insights/expired',
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (_request: FastifyRequest, reply: FastifyReply) => {
       try {
         const result = db
           .prepare(
@@ -383,7 +375,7 @@ export async function aiInsightsRoutes(
    * GET /api/ai/status
    * Get AI service status and configuration
    */
-  fastify.get('/api/ai/status', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/ai/status', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const status = {
         ollama_enabled: ollamaEnabled || false,
