@@ -3,6 +3,19 @@ import { Server } from 'socket.io';
 import { logger } from '../utils/logger.js';
 
 /**
+ * Available Socket.IO room names for real-time updates
+ */
+export const SOCKET_ROOMS = {
+  SYSTEM: 'system',
+  STORAGE: 'storage',
+  SMART: 'smart',
+  DOCKER: 'docker',
+  ARR: 'arr',
+  PLEX: 'plex',
+  SECURITY: 'security',
+} as const;
+
+/**
  * Create and configure Socket.IO server with room management
  */
 export function createSocketIOServer(httpServer: HTTPServer): Server {
@@ -17,39 +30,12 @@ export function createSocketIOServer(httpServer: HTTPServer): Server {
   io.on('connection', (socket) => {
     logger.info(`Client connected: ${socket.id}`);
 
-    socket.on('join:system', () => {
-      void socket.join('system');
-      logger.info(`Client ${socket.id} joined system room`);
-    });
-
-    socket.on('join:storage', () => {
-      void socket.join('storage');
-      logger.info(`Client ${socket.id} joined storage room`);
-    });
-
-    socket.on('join:smart', () => {
-      void socket.join('smart');
-      logger.info(`Client ${socket.id} joined smart room`);
-    });
-
-    socket.on('join:docker', () => {
-      void socket.join('docker');
-      logger.info(`Client ${socket.id} joined docker room`);
-    });
-
-    socket.on('join:arr', () => {
-      void socket.join('arr');
-      logger.info(`Client ${socket.id} joined arr room`);
-    });
-
-    socket.on('join:plex', () => {
-      void socket.join('plex');
-      logger.info(`Client ${socket.id} joined plex room`);
-    });
-
-    socket.on('join:security', () => {
-      void socket.join('security');
-      logger.info(`Client ${socket.id} joined security room`);
+    // Dynamically register room join handlers
+    Object.values(SOCKET_ROOMS).forEach((roomName) => {
+      socket.on(`join:${roomName}`, () => {
+        void socket.join(roomName);
+        logger.info(`Client ${socket.id} joined ${roomName} room`);
+      });
     });
 
     socket.on('disconnect', () => {

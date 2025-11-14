@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { errorHandler } from '../middleware/error-handler.js';
 import { registerRequestLogging } from '../middleware/request-logger.js';
+import { correlationIdMiddleware } from '../middleware/correlation-id.js';
 import { register, httpRequestDuration, httpRequestCounter } from '../utils/metrics.js';
 import { logger } from '../utils/logger.js';
 
@@ -26,6 +27,9 @@ export async function registerMiddleware(fastify: FastifyInstance): Promise<void
     privacy: 'private',
     expiresIn: 30, // 30 seconds default
   });
+
+  // Correlation ID tracking (must be first to ensure all requests have IDs)
+  fastify.addHook('onRequest', correlationIdMiddleware);
 
   // Register request logging middleware
   registerRequestLogging(fastify);
