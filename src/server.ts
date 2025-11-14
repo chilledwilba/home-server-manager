@@ -11,6 +11,7 @@ import {
 } from './core/middleware-initializer.js';
 import { registerRoutes } from './core/routes-initializer.js';
 import { registerHealthRoutes } from './core/health-routes.js';
+import { HealthMonitor } from './middleware/health-monitor.js';
 import { logger } from './utils/logger.js';
 
 /**
@@ -30,6 +31,9 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   const services = new ServiceContainer({ db, io });
   await services.initialize();
 
+  // Initialize health monitor with circuit breakers
+  const healthMonitor = new HealthMonitor(services, db);
+
   // Register decorators for type-safe service access
   registerServiceDecorators(fastify, db, services);
 
@@ -40,7 +44,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   await registerRoutes(fastify);
 
   // Register health check and system info endpoints
-  registerHealthRoutes(fastify);
+  registerHealthRoutes(fastify, healthMonitor);
 
   // Register Prometheus metrics endpoint
   registerMetricsEndpoint(fastify);
@@ -54,9 +58,13 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   // Start monitoring services
   await services.start();
 
+  // Start health monitor (with circuit breakers and automatic recovery)
+  healthMonitor.start();
+
   // Setup graceful shutdown
   const shutdown = async (): Promise<void> => {
     logger.info('Shutting down gracefully...');
+    healthMonitor.stop();
     await services.shutdown();
     await fastify.close();
     closeDatabase();

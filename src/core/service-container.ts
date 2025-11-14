@@ -188,11 +188,7 @@ export class ServiceContainer {
     const trueNASHost = process.env['TRUENAS_HOST'];
     const trueNASKey = process.env['TRUENAS_API_KEY'];
 
-    if (
-      trueNASHost &&
-      trueNASKey &&
-      trueNASKey !== 'mock-truenas-api-key-replace-on-deploy'
-    ) {
+    if (trueNASHost && trueNASKey && trueNASKey !== 'mock-truenas-api-key-replace-on-deploy') {
       this.services.set(
         'truenasClient',
         new TrueNASClient({

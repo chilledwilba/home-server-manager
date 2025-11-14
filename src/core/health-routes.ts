@@ -6,17 +6,34 @@ import type { ZFSManager } from '../services/zfs/manager.js';
 import type { ArrOptimizer } from '../services/arr/arr-optimizer.js';
 import type { SecurityOrchestrator } from '../services/security/orchestrator.js';
 import type { InfrastructureManager } from '../services/infrastructure/manager.js';
+import type { HealthMonitor } from '../middleware/health-monitor.js';
 import { logger } from '../utils/logger.js';
 
 /**
  * Register health check and system info endpoints
  */
-export function registerHealthRoutes(fastify: FastifyInstance): void {
+export function registerHealthRoutes(
+  fastify: FastifyInstance,
+  healthMonitor?: HealthMonitor,
+): void {
   const services = (fastify as FastifyWithServices).services;
   const db = (fastify as FastifyWithServices).db;
 
   // Enhanced health check endpoint with actual connectivity tests
   fastify.get('/health', async (_request, reply) => {
+    // Use health monitor if available
+    if (healthMonitor) {
+      const report = healthMonitor.getHealthReport();
+      const healthy = report.healthy;
+
+      return reply.code(healthy ? 200 : 503).send({
+        status: healthy ? 'healthy' : 'degraded',
+        ...report,
+        monitoring: getMonitoringStatus(services),
+      });
+    }
+
+    // Fallback to original health check
     const checks = {
       server: true,
       database: false,
@@ -108,8 +125,7 @@ function getMonitoringStatus(services: {
     remediation: true,
     arr: services.get<ArrOptimizer>('arrOptimizer') !== undefined,
     infrastructure: services.get<InfrastructureManager>('infrastructureManager') !== undefined,
-    security_orchestrator:
-      services.get<SecurityOrchestrator>('securityOrchestrator') !== undefined,
+    security_orchestrator: services.get<SecurityOrchestrator>('securityOrchestrator') !== undefined,
     database: true,
     socketio: true,
   };

@@ -20,19 +20,16 @@ export async function remediationRoutes(fastify: FastifyInstance): Promise<void>
    */
   fastify.get(
     '/api/remediation/pending',
-    withService<AutoRemediationService>(
-      'remediationService',
-      async (remediationService) => {
-        try {
-          const pending = remediationService.getPendingApprovals();
-          return formatSuccess(pending);
-        } catch (error) {
-          throw new DatabaseError('Failed to fetch pending approvals', {
-            original: error instanceof Error ? error.message : String(error),
-          });
-        }
-      },
-    ),
+    withService<AutoRemediationService>('remediationService', async (remediationService) => {
+      try {
+        const pending = remediationService.getPendingApprovals();
+        return formatSuccess(pending);
+      } catch (error) {
+        throw new DatabaseError('Failed to fetch pending approvals', {
+          original: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }),
   );
 
   /**
@@ -76,18 +73,15 @@ export async function remediationRoutes(fastify: FastifyInstance): Promise<void>
    */
   fastify.get(
     '/api/remediation/history',
-    withService<AutoRemediationService>(
-      'remediationService',
-      async (remediationService) => {
-        try {
-          const history = remediationService.getRemediationHistory();
-          return formatSuccess(history);
-        } catch (error) {
-          throw new DatabaseError('Failed to fetch remediation history', {
-            original: error instanceof Error ? error.message : String(error),
-          });
-        }
-      },
-    ),
+    withService<AutoRemediationService>('remediationService', async (remediationService) => {
+      try {
+        const history = remediationService.getRemediationHistory();
+        return formatSuccess(history);
+      } catch (error) {
+        throw new DatabaseError('Failed to fetch remediation history', {
+          original: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }),
   );
 }

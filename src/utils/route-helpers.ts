@@ -227,20 +227,14 @@ export function parseBoolParam(
  * const { app } = extractParams<{ app: string }>(request.params);
  * const { limit = 50 } = extractQuery<{ limit?: number }>(request.query);
  */
-export function extractParams<T extends Record<string, unknown>>(
-  params: unknown,
-): T {
+export function extractParams<T extends Record<string, unknown>>(params: unknown): T {
   return (params || {}) as T;
 }
 
-export function extractQuery<T extends Record<string, unknown>>(
-  query: unknown,
-): T {
+export function extractQuery<T extends Record<string, unknown>>(query: unknown): T {
   return (query || {}) as T;
 }
 
-export function extractBody<T extends Record<string, unknown>>(
-  body: unknown,
-): T {
+export function extractBody<T extends Record<string, unknown>>(body: unknown): T {
   return (body || {}) as T;
 }

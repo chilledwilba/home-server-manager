@@ -150,38 +150,35 @@ export async function aiInsightsRoutes(
    * GET /api/ai/anomalies/history
    * Get historical anomaly detections
    */
-  fastify.get(
-    '/api/ai/anomalies/history',
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const { limit = '100', days = '7' } = request.query as { limit?: string; days?: string };
+  fastify.get('/api/ai/anomalies/history', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { limit = '100', days = '7' } = request.query as { limit?: string; days?: string };
 
-        const history = db
-          .prepare(
-            `
+      const history = db
+        .prepare(
+          `
           SELECT *
           FROM anomaly_history
           WHERE detected_at > datetime('now', '-' || ? || ' days')
           ORDER BY detected_at DESC
           LIMIT ?
         `,
-          )
-          .all(days, limit);
+        )
+        .all(days, limit);
 
-        return reply.send({
-          success: true,
-          data: history,
-          count: Array.isArray(history) ? history.length : 0,
-        });
-      } catch (error) {
-        logger.error({ err: error }, 'Failed to fetch anomaly history');
-        return reply.code(500).send({
-          success: false,
-          error: 'Failed to fetch anomaly history',
-        });
-      }
-    },
-  );
+      return reply.send({
+        success: true,
+        data: history,
+        count: Array.isArray(history) ? history.length : 0,
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to fetch anomaly history');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to fetch anomaly history',
+      });
+    }
+  });
 
   /**
    * GET /api/ai/capacity
