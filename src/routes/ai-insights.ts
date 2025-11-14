@@ -293,7 +293,7 @@ export async function aiInsightsRoutes(
 
         logger.info(`Analyzing performance trends (${periodDays} days)...`);
 
-        const trends = await aiInsights.analyzePerformanceTrends(periodDays);
+        const trends = aiInsights.analyzePerformanceTrends(periodDays);
 
         return reply.send({
           success: true,

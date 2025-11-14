@@ -238,7 +238,7 @@ export class AIInsightsService {
     const resources = resource ? [resource] : ['storage', 'memory', 'swap'];
 
     for (const res of resources) {
-      const prediction = await this.predictResourceCapacity(res);
+      const prediction = this.predictResourceCapacity(res);
       if (prediction) {
         predictions.push(prediction);
 
@@ -316,9 +316,9 @@ export class AIInsightsService {
   /**
    * Analyze performance trends over time
    */
-  async analyzePerformanceTrends(
+  analyzePerformanceTrends(
     periodDays: number = 30,
-  ): Promise<PerformanceTrend[]> {
+  ): PerformanceTrend[] {
     logger.info(`Analyzing performance trends over ${periodDays} days...`);
 
     const trends: PerformanceTrend[] = [];
@@ -406,7 +406,7 @@ export class AIInsightsService {
       }
 
       // Performance trends
-      const perfTrends = await this.analyzePerformanceTrends(30);
+      const perfTrends = this.analyzePerformanceTrends(30);
       for (const trend of perfTrends) {
         if (trend.trend === 'degrading') {
           insights.push({
@@ -596,9 +596,9 @@ export class AIInsightsService {
     };
   }
 
-  private async predictResourceCapacity(
+  private predictResourceCapacity(
     resource: string,
-  ): Promise<CapacityPrediction | null> {
+  ): CapacityPrediction | null {
     try {
       if (resource === 'storage') {
         return this.predictStorageCapacity();
@@ -635,6 +635,7 @@ export class AIInsightsService {
     );
 
     const latest = dataPoints[dataPoints.length - 1];
+    if (!latest) return null;
     const currentUsagePercent = (latest.total_used / latest.total_capacity) * 100;
     const bytesRemaining = latest.total_capacity - latest.total_used;
     const daysUntilFull = growthRate > 0 ? Math.floor(bytesRemaining / growthRate) : null;
@@ -689,6 +690,7 @@ export class AIInsightsService {
     );
 
     const latest = dataPoints[dataPoints.length - 1];
+    if (!latest) return null;
     const percentRemaining = 100 - latest.avg_percent;
     const daysUntilFull = growthRate > 0 ? Math.floor(percentRemaining / growthRate) : null;
 
@@ -763,13 +765,13 @@ export class AIInsightsService {
   }
 
   private identifyStorageOptimizations(
-    state: CostOptimization['current_state'],
+    _state: CostOptimization['current_state'],
   ): CostOptimization['opportunities'] {
     const opportunities: CostOptimization['opportunities'] = [];
 
     // Check for excessive snapshots
     const snapshotCount = this.db
-      .prepare('SELECT COUNT(*) as count FROM alerts WHERE type = "snapshot"')
+      .prepare("SELECT COUNT(*) as count FROM alerts WHERE type = 'snapshot'")
       .get() as { count: number } | undefined;
 
     if (snapshotCount && snapshotCount.count > 50) {
@@ -791,7 +793,7 @@ export class AIInsightsService {
   }
 
   private identifyComputeOptimizations(
-    state: CostOptimization['current_state'],
+    _state: CostOptimization['current_state'],
   ): CostOptimization['opportunities'] {
     const opportunities: CostOptimization['opportunities'] = [];
 
@@ -842,9 +844,9 @@ export class AIInsightsService {
       WHERE timestamp > datetime('now', '-7 days')
     `,
       )
-      .get() as { avg: number } | undefined;
+      .get() as { avg: number | null } | undefined;
 
-    if (avgCPU && avgCPU.avg < 20) {
+    if (avgCPU && avgCPU.avg !== null && avgCPU.avg < 20) {
       opportunities.push({
         category: 'power',
         title: 'Enable CPU power saving features',
@@ -1028,9 +1030,9 @@ export class AIInsightsService {
       WHERE timestamp > ? AND temperature IS NOT NULL
     `,
       )
-      .get(cutoffTime) as { avg: number; min: number; max: number } | undefined;
+      .get(cutoffTime) as { avg: number | null; min: number | null; max: number | null } | undefined;
 
-    if (!stats) return null;
+    if (!stats || stats.avg === null || stats.min === null || stats.max === null) return null;
 
     return {
       metric: 'Disk Temperature',
