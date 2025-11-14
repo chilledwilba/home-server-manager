@@ -1,6 +1,10 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
+# Check file sizes (WARNING ONLY)
+echo "Checking file sizes..."
+node scripts/check-file-sizes-warning.js
+
 # Run lint-staged
 npx lint-staged
 
