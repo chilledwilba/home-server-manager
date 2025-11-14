@@ -8,6 +8,13 @@ import {
   NotFoundError,
   ValidationError,
 } from '../utils/error-types.js';
+import {
+  withDatabase,
+  formatSuccess,
+  extractParams,
+  extractQuery,
+  extractBody,
+} from '../utils/route-helpers.js';
 
 const logger = createLogger('infrastructure-routes');
 
@@ -20,15 +27,14 @@ export async function infrastructureRoutes(
 ): Promise<void> {
   const { manager } = options;
 
-  // Analyze current infrastructure
+  /**
+   * GET /analyze
+   * Analyze current infrastructure deployment
+   */
   fastify.get('/analyze', async () => {
     try {
       const analysis = await manager.analyzeInfrastructure();
-      return {
-        success: true,
-        data: analysis,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(analysis);
     } catch (error) {
       logger.error({ err: error }, 'Failed to analyze infrastructure');
       if (error instanceof ServiceUnavailableError || error instanceof NotFoundError) {
@@ -40,7 +46,10 @@ export async function infrastructureRoutes(
     }
   });
 
-  // List all available services
+  /**
+   * GET /services
+   * List all available services (deployed and recommended)
+   */
   fastify.get('/services', async () => {
     try {
       const { deployed, recommended } = await manager.analyzeInfrastructure();
@@ -51,11 +60,7 @@ export async function infrastructureRoutes(
         (service, index, self) => index === self.findIndex((s) => s.name === service.name),
       );
 
-      return {
-        success: true,
-        data: uniqueServices,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(uniqueServices);
     } catch (error) {
       logger.error({ err: error }, 'Failed to list services');
       if (error instanceof ServiceUnavailableError || error instanceof NotFoundError) {
@@ -67,12 +72,15 @@ export async function infrastructureRoutes(
     }
   });
 
-  // Get service details by name
+  /**
+   * GET /services/:name
+   * Get details for a specific service
+   */
   fastify.get<{
     Params: { name: string };
   }>('/services/:name', async (request) => {
     try {
-      const { name } = request.params;
+      const { name } = extractParams<{ name: string }>(request.params);
       const { deployed, recommended } = await manager.analyzeInfrastructure();
       const allServices = [...deployed, ...recommended];
 
@@ -84,11 +92,7 @@ export async function infrastructureRoutes(
         throw new NotFoundError(`Service '${name}' not found`);
       }
 
-      return {
-        success: true,
-        data: service,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(service);
     } catch (error) {
       logger.error({ err: error }, 'Failed to get service details');
       if (
@@ -104,14 +108,17 @@ export async function infrastructureRoutes(
     }
   });
 
-  // Get docker-compose template for a service
+  /**
+   * GET /docker-compose/:name
+   * Get docker-compose template for a service
+   */
   fastify.get<{
     Params: { name: string };
     Querystring: { env?: string };
   }>('/docker-compose/:name', async (request) => {
     try {
-      const { name } = request.params;
-      const { env } = request.query;
+      const { name } = extractParams<{ name: string }>(request.params);
+      const { env } = extractQuery<{ env?: string }>(request.query);
 
       // Parse environment variables if provided
       let envVars: Record<string, string> | undefined;
@@ -126,14 +133,10 @@ export async function infrastructureRoutes(
 
       const dockerCompose = await manager.generateDockerCompose(name, envVars);
 
-      return {
-        success: true,
-        data: {
-          service: name,
-          compose: dockerCompose,
-        },
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess({
+        service: name,
+        compose: dockerCompose,
+      });
     } catch (error) {
       logger.error({ err: error }, 'Failed to generate docker-compose');
       if (
@@ -149,7 +152,10 @@ export async function infrastructureRoutes(
     }
   });
 
-  // Deploy a service
+  /**
+   * POST /deploy
+   * Deploy a new service
+   */
   fastify.post<{
     Body: {
       serviceName: string;
@@ -159,7 +165,12 @@ export async function infrastructureRoutes(
     };
   }>('/deploy', async (request) => {
     try {
-      const { serviceName, stackName, envVars, autoStart } = request.body;
+      const { serviceName, stackName, envVars, autoStart } = extractBody<{
+        serviceName: string;
+        stackName?: string;
+        envVars?: Record<string, string>;
+        autoStart?: boolean;
+      }>(request.body);
 
       if (!serviceName) {
         throw new ValidationError('serviceName is required');
@@ -183,11 +194,7 @@ export async function infrastructureRoutes(
         );
       }
 
-      return {
-        success: result.success,
-        data: result.stackId ? { stackId: result.stackId } : undefined,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(result.stackId ? { stackId: result.stackId } : undefined);
     } catch (error) {
       logger.error({ err: error }, 'Failed to deploy service');
       if (
@@ -204,12 +211,15 @@ export async function infrastructureRoutes(
     }
   });
 
-  // Remove a service
+  /**
+   * DELETE /services/:name
+   * Remove a deployed service
+   */
   fastify.delete<{
     Params: { name: string };
   }>('/services/:name', async (request) => {
     try {
-      const { name } = request.params;
+      const { name } = extractParams<{ name: string }>(request.params);
 
       logger.info(`Removing service: ${name}`);
 
@@ -225,11 +235,10 @@ export async function infrastructureRoutes(
         );
       }
 
-      return {
-        success: result.success,
-        message: result.success ? `Service '${name}' removed successfully` : undefined,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(
+        undefined,
+        result.success ? `Service '${name}' removed successfully` : undefined,
+      );
     } catch (error) {
       logger.error({ err: error }, 'Failed to remove service');
       if (
@@ -245,18 +254,17 @@ export async function infrastructureRoutes(
     }
   });
 
-  // Get deployment history
-  fastify.get('/deployments', async () => {
-    try {
-      const db = (fastify as { db?: { prepare: (sql: string) => { all: () => unknown[] } } }).db;
-
-      if (!db) {
-        throw new ServiceUnavailableError('Database not available');
-      }
-
-      const deployments = db
-        .prepare(
-          `
+  /**
+   * GET /deployments
+   * Get deployment history
+   */
+  fastify.get(
+    '/deployments',
+    withDatabase(async (db) => {
+      try {
+        const deployments = db
+          .prepare(
+            `
         SELECT
           id, service_name, service_type, stack_id,
           deployed_at, removed_at, status, deployed_by
@@ -264,33 +272,30 @@ export async function infrastructureRoutes(
         ORDER BY deployed_at DESC
         LIMIT 100
       `,
-        )
-        .all();
+          )
+          .all();
 
-      return {
-        success: true,
-        data: deployments,
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      logger.error({ err: error }, 'Failed to get deployment history');
-      if (error instanceof ServiceUnavailableError) {
-        throw error;
+        return formatSuccess(deployments);
+      } catch (error) {
+        logger.error({ err: error }, 'Failed to get deployment history');
+        throw new DatabaseError('Failed to get deployment history', {
+          original: error instanceof Error ? error.message : String(error),
+        });
       }
-      throw new DatabaseError('Failed to get deployment history', {
-        original: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
+    }),
+  );
 
-  // Validate service deployment
+  /**
+   * POST /validate
+   * Validate a service deployment configuration
+   */
   fastify.post<{
     Body: {
       serviceName: string;
     };
   }>('/validate', async (request) => {
     try {
-      const { serviceName } = request.body;
+      const { serviceName } = extractBody<{ serviceName: string }>(request.body);
 
       if (!serviceName) {
         throw new ValidationError('serviceName is required');
@@ -298,11 +303,7 @@ export async function infrastructureRoutes(
 
       const validation = manager.validateDeployment(serviceName);
 
-      return {
-        success: true,
-        data: validation,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(validation);
     } catch (error) {
       logger.error({ err: error }, 'Failed to validate deployment');
       if (

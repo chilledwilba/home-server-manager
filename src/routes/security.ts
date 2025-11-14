@@ -11,6 +11,7 @@ import {
   NotFoundError,
   ValidationError,
 } from '../utils/error-types.js';
+import { withDatabase, formatSuccess, extractBody } from '../utils/route-helpers.js';
 
 const logger = createLogger('security-routes');
 
@@ -25,7 +26,10 @@ export async function securityRoutes(
 ): Promise<void> {
   const { scanner, dockerMonitor, orchestrator } = options;
 
-  // Run security scan
+  /**
+   * POST /scan
+   * Run a security scan on all Docker containers
+   */
   fastify.post('/scan', async () => {
     try {
       if (!dockerMonitor) {
@@ -35,11 +39,7 @@ export async function securityRoutes(
       const containers = await dockerMonitor.getContainers();
       const result = await scanner.scanAllContainers(containers as never[]);
 
-      return {
-        success: true,
-        data: result,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(result);
     } catch (error) {
       if (error instanceof ServiceUnavailableError) {
         throw error;
@@ -50,15 +50,14 @@ export async function securityRoutes(
     }
   });
 
-  // Get latest security findings
+  /**
+   * GET /findings
+   * Get the latest security findings
+   */
   fastify.get('/findings', async () => {
     try {
       const findings = scanner.getLatestFindings();
-      return {
-        success: true,
-        data: findings,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(findings);
     } catch (error) {
       if (error instanceof ServiceUnavailableError || error instanceof NotFoundError) {
         throw error;
@@ -69,15 +68,14 @@ export async function securityRoutes(
     }
   });
 
-  // Get security report
+  /**
+   * GET /report
+   * Generate a comprehensive security report
+   */
   fastify.get('/report', async () => {
     try {
       const report = scanner.generateSecurityReport();
-      return {
-        success: true,
-        data: report,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(report);
     } catch (error) {
       if (error instanceof ServiceUnavailableError || error instanceof NotFoundError) {
         throw error;
@@ -88,7 +86,10 @@ export async function securityRoutes(
     }
   });
 
-  // Mark finding as fixed
+  /**
+   * POST /findings/fix
+   * Mark a security finding as fixed
+   */
   fastify.post<{
     Body: {
       container: string;
@@ -96,15 +97,11 @@ export async function securityRoutes(
     };
   }>('/findings/fix', async (request) => {
     try {
-      const { container, type } = request.body;
+      const { container, type } = extractBody<{ container: string; type: string }>(request.body);
 
       scanner.markFindingFixed(container, type);
 
-      return {
-        success: true,
-        message: 'Finding marked as fixed',
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(null, 'Finding marked as fixed');
     } catch (error) {
       if (error instanceof ServiceUnavailableError || error instanceof NotFoundError) {
         throw error;
@@ -117,7 +114,10 @@ export async function securityRoutes(
 
   // === Security Orchestrator Routes (Phase 8) ===
 
-  // Get comprehensive security status
+  /**
+   * GET /status
+   * Get comprehensive security status
+   */
   fastify.get('/status', async () => {
     try {
       if (!orchestrator) {
@@ -125,11 +125,7 @@ export async function securityRoutes(
       }
 
       const status = await orchestrator.getStatus();
-      return {
-        success: true,
-        data: status,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(status);
     } catch (error) {
       if (error instanceof ServiceUnavailableError) {
         throw error;
@@ -141,7 +137,10 @@ export async function securityRoutes(
     }
   });
 
-  // Get Cloudflare Tunnel status
+  /**
+   * GET /tunnel/status
+   * Get Cloudflare Tunnel status
+   */
   fastify.get('/tunnel/status', async () => {
     try {
       if (!orchestrator) {
@@ -154,11 +153,7 @@ export async function securityRoutes(
       }
 
       const metrics = await client.getMetrics();
-      return {
-        success: true,
-        data: metrics,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(metrics);
     } catch (error) {
       if (error instanceof ServiceUnavailableError) {
         throw error;
@@ -170,7 +165,10 @@ export async function securityRoutes(
     }
   });
 
-  // Get Authentik status
+  /**
+   * GET /auth/status
+   * Get Authentik authentication status
+   */
   fastify.get('/auth/status', async () => {
     try {
       if (!orchestrator) {
@@ -183,11 +181,7 @@ export async function securityRoutes(
       }
 
       const status = await client.getSystemStatus();
-      return {
-        success: true,
-        data: status,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(status);
     } catch (error) {
       if (error instanceof ServiceUnavailableError) {
         throw error;
@@ -199,7 +193,10 @@ export async function securityRoutes(
     }
   });
 
-  // Get Fail2ban status
+  /**
+   * GET /fail2ban/status
+   * Get Fail2ban status
+   */
   fastify.get('/fail2ban/status', async () => {
     try {
       if (!orchestrator) {
@@ -212,11 +209,7 @@ export async function securityRoutes(
       }
 
       const status = await client.getStatus();
-      return {
-        success: true,
-        data: status,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(status);
     } catch (error) {
       if (error instanceof ServiceUnavailableError) {
         throw error;
@@ -228,7 +221,10 @@ export async function securityRoutes(
     }
   });
 
-  // Ban an IP address
+  /**
+   * POST /fail2ban/ban
+   * Ban an IP address
+   */
   fastify.post<{
     Body: {
       ip: string;
@@ -240,7 +236,7 @@ export async function securityRoutes(
         throw new ServiceUnavailableError('Security orchestrator not configured');
       }
 
-      const { ip, jail } = request.body;
+      const { ip, jail } = extractBody<{ ip: string; jail?: string }>(request.body);
 
       if (!ip) {
         throw new ValidationError('IP address is required');
@@ -258,11 +254,10 @@ export async function securityRoutes(
       }
 
       const result = await client.banIP(ip, jail);
-      return {
-        success: result,
-        message: result ? `IP ${ip} banned successfully` : `Failed to ban IP ${ip}`,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(
+        { banned: result },
+        result ? `IP ${ip} banned successfully` : `Failed to ban IP ${ip}`,
+      );
     } catch (error) {
       if (error instanceof ServiceUnavailableError || error instanceof ValidationError) {
         throw error;
@@ -274,7 +269,10 @@ export async function securityRoutes(
     }
   });
 
-  // Unban an IP address
+  /**
+   * POST /fail2ban/unban
+   * Unban an IP address
+   */
   fastify.post<{
     Body: {
       ip: string;
@@ -286,7 +284,7 @@ export async function securityRoutes(
         throw new ServiceUnavailableError('Security orchestrator not configured');
       }
 
-      const { ip, jail } = request.body;
+      const { ip, jail } = extractBody<{ ip: string; jail?: string }>(request.body);
 
       if (!ip) {
         throw new ValidationError('IP address is required');
@@ -304,11 +302,10 @@ export async function securityRoutes(
       }
 
       const result = await client.unbanIP(ip, jail);
-      return {
-        success: result,
-        message: result ? `IP ${ip} unbanned successfully` : `Failed to unban IP ${ip}`,
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess(
+        { unbanned: result },
+        result ? `IP ${ip} unbanned successfully` : `Failed to unban IP ${ip}`,
+      );
     } catch (error) {
       if (error instanceof ServiceUnavailableError || error instanceof ValidationError) {
         throw error;
@@ -320,7 +317,10 @@ export async function securityRoutes(
     }
   });
 
-  // Get all banned IPs
+  /**
+   * GET /fail2ban/banned
+   * Get all banned IP addresses
+   */
   fastify.get('/fail2ban/banned', async () => {
     try {
       if (!orchestrator) {
@@ -333,11 +333,7 @@ export async function securityRoutes(
       }
 
       const bannedIPs = await client.getAllBannedIPs();
-      return {
-        success: true,
-        data: { ips: bannedIPs, count: bannedIPs.length },
-        timestamp: new Date().toISOString(),
-      };
+      return formatSuccess({ ips: bannedIPs, count: bannedIPs.length });
     } catch (error) {
       if (error instanceof ServiceUnavailableError) {
         throw error;
@@ -349,39 +345,32 @@ export async function securityRoutes(
     }
   });
 
-  // Get security status history
-  fastify.get('/status/history', async () => {
-    try {
-      const db = (fastify as { db?: { prepare: (sql: string) => { all: () => unknown[] } } }).db;
-
-      if (!db) {
-        throw new ServiceUnavailableError('Database not available');
-      }
-
-      const history = db
-        .prepare(
-          `
+  /**
+   * GET /status/history
+   * Get security status history
+   */
+  fastify.get(
+    '/status/history',
+    withDatabase(async (db) => {
+      try {
+        const history = db
+          .prepare(
+            `
         SELECT *
         FROM security_status_log
         ORDER BY timestamp DESC
         LIMIT 100
       `,
-        )
-        .all();
+          )
+          .all();
 
-      return {
-        success: true,
-        data: history,
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      if (error instanceof ServiceUnavailableError) {
-        throw error;
+        return formatSuccess(history);
+      } catch (error) {
+        logger.error({ err: error }, 'Failed to get security status history:');
+        throw new DatabaseError('Failed to get security status history', {
+          original: error instanceof Error ? error.message : String(error),
+        });
       }
-      logger.error({ err: error }, 'Failed to get security status history:');
-      throw new DatabaseError('Failed to get security status history', {
-        original: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
+    }),
+  );
 }
