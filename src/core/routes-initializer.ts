@@ -163,7 +163,7 @@ async function registerAIInsightsRoutes(
   const ollamaEnabled = process.env['OLLAMA_ENABLED'] === 'true';
 
   try {
-    const { aiInsightsRoutes } = await import('../routes/ai-insights.js');
+    const { aiInsightsRoutes } = await import('../routes/ai-insights/index.js');
 
     if (ollamaEnabled) {
       await fastify.register(aiInsightsRoutes, {
