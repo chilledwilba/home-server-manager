@@ -115,7 +115,7 @@ export async function aiInsightsRoutes(
    * GET /api/ai/anomalies
    * Detect anomalies in system metrics
    */
-  fastify.get('/api/ai/anomalies', async (_request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/ai/anomalies', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { lookback = '24' } = request.query as { lookback?: string };
       const lookbackHours = parseInt(lookback, 10);
@@ -152,7 +152,7 @@ export async function aiInsightsRoutes(
    */
   fastify.get(
     '/api/ai/anomalies/history',
-    async (_request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const { limit = '100', days = '7' } = request.query as { limit?: string; days?: string };
 
@@ -187,7 +187,7 @@ export async function aiInsightsRoutes(
    * GET /api/ai/capacity
    * Predict when resources will reach capacity
    */
-  fastify.get('/api/ai/capacity', async (_request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/ai/capacity', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { resource } = request.query as { resource?: string };
 
@@ -214,7 +214,7 @@ export async function aiInsightsRoutes(
    * GET /api/ai/capacity/history
    * Get historical capacity predictions
    */
-  fastify.get('/api/ai/capacity/history', async (_request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/ai/capacity/history', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { resource, limit = '50' } = request.query as { resource?: string; limit?: string };
 
@@ -273,7 +273,7 @@ export async function aiInsightsRoutes(
    */
   fastify.get(
     '/api/ai/performance-trends',
-    async (_request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const { period = '30' } = request.query as { period?: string };
         const periodDays = parseInt(period, 10);
