@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { ServiceUnavailableError, DatabaseError, NotFoundError } from '../utils/error-types.js';
 
 const ApproveActionSchema = z.object({
   alertId: z.number(),
@@ -13,16 +14,25 @@ const ApproveActionSchema = z.object({
 export async function remediationRoutes(fastify: FastifyInstance): Promise<void> {
   // Get pending approvals
   fastify.get('/api/remediation/pending', async () => {
-    const remediationService = (
-      fastify as { remediationService?: { getPendingApprovals: () => unknown } }
-    ).remediationService;
+    try {
+      const remediationService = (
+        fastify as { remediationService?: { getPendingApprovals: () => unknown } }
+      ).remediationService;
 
-    if (!remediationService) {
-      return { success: false, error: 'Remediation service not initialized' };
+      if (!remediationService) {
+        throw new ServiceUnavailableError('Remediation service not initialized');
+      }
+
+      const pending = remediationService.getPendingApprovals();
+      return { success: true, data: pending, timestamp: new Date().toISOString() };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to fetch pending approvals', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
-
-    const pending = remediationService.getPendingApprovals();
-    return { success: true, data: pending, timestamp: new Date().toISOString() };
   });
 
   // Approve action
@@ -34,41 +44,65 @@ export async function remediationRoutes(fastify: FastifyInstance): Promise<void>
       },
     },
     async (request) => {
-      const remediationService = (
-        fastify as {
-          remediationService?: {
-            approveAction: (alertId: number, approvedBy: string) => Promise<void>;
-          };
+      try {
+        const remediationService = (
+          fastify as {
+            remediationService?: {
+              approveAction: (alertId: number, approvedBy: string) => Promise<void>;
+            };
+          }
+        ).remediationService;
+
+        if (!remediationService) {
+          throw new ServiceUnavailableError('Remediation service not initialized');
         }
-      ).remediationService;
 
-      if (!remediationService) {
-        return { success: false, error: 'Remediation service not initialized' };
+        const { alertId, approvedBy } = request.body as z.infer<typeof ApproveActionSchema>;
+
+        await remediationService.approveAction(alertId, approvedBy);
+
+        return {
+          success: true,
+          message: 'Action approved and executed',
+          timestamp: new Date().toISOString(),
+        };
+      } catch (error) {
+        if (error instanceof ServiceUnavailableError) {
+          throw error;
+        }
+        if (error instanceof Error && error.message.includes('not found')) {
+          throw new NotFoundError(
+            'Remediation action',
+            String((request.body as { alertId: number }).alertId),
+          );
+        }
+        throw new DatabaseError('Failed to approve remediation action', {
+          original: error instanceof Error ? error.message : String(error),
+        });
       }
-
-      const { alertId, approvedBy } = request.body as z.infer<typeof ApproveActionSchema>;
-
-      await remediationService.approveAction(alertId, approvedBy);
-
-      return {
-        success: true,
-        message: 'Action approved and executed',
-        timestamp: new Date().toISOString(),
-      };
     },
   );
 
   // Get remediation history
   fastify.get('/api/remediation/history', async () => {
-    const remediationService = (
-      fastify as { remediationService?: { getRemediationHistory: (limit?: number) => unknown } }
-    ).remediationService;
+    try {
+      const remediationService = (
+        fastify as { remediationService?: { getRemediationHistory: (limit?: number) => unknown } }
+      ).remediationService;
 
-    if (!remediationService) {
-      return { success: false, error: 'Remediation service not initialized' };
+      if (!remediationService) {
+        throw new ServiceUnavailableError('Remediation service not initialized');
+      }
+
+      const history = remediationService.getRemediationHistory();
+      return { success: true, data: history, timestamp: new Date().toISOString() };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to fetch remediation history', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
-
-    const history = remediationService.getRemediationHistory();
-    return { success: true, data: history, timestamp: new Date().toISOString() };
   });
 }

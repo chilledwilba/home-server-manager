@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { ServiceUnavailableError, DatabaseError } from '../utils/error-types.js';
 
 /**
  * Arr Suite Optimizer Routes
@@ -17,90 +18,121 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Get optimization suggestions for an app
   fastify.get('/api/arr/optimize/suggestions/:app', async (request) => {
-    const { app } = request.params as { app: string };
-    const suggestions = arrOptimizer.getOptimizationSuggestions(app);
+    try {
+      const { app } = request.params as { app: string };
+      const suggestions = arrOptimizer.getOptimizationSuggestions(app);
 
-    return {
-      success: true,
-      app,
-      suggestions,
-      timestamp: new Date().toISOString(),
-    };
+      return {
+        success: true,
+        app,
+        suggestions,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      throw new DatabaseError('Failed to get optimization suggestions', {
+        original: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   // Get performance metrics for an app
   fastify.get('/api/arr/performance/:app', async (request) => {
-    const { app } = request.params as { app: string };
+    try {
+      const { app } = request.params as { app: string };
 
-    const db = (
-      fastify as { db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } } }
-    ).db;
-    if (!db) {
-      return { success: false, error: 'Database not available' };
-    }
+      const db = (
+        fastify as {
+          db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } };
+        }
+      ).db;
+      if (!db) {
+        throw new ServiceUnavailableError('Database not available');
+      }
 
-    const metrics = db
-      .prepare(
-        `
+      const metrics = db
+        .prepare(
+          `
       SELECT * FROM arr_performance_metrics
       WHERE app_name = ?
       ORDER BY calculated_at DESC
       LIMIT 24
     `,
-      )
-      .all(app);
+        )
+        .all(app);
 
-    return {
-      success: true,
-      app,
-      metrics,
-      timestamp: new Date().toISOString(),
-    };
+      return {
+        success: true,
+        app,
+        metrics,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to fetch performance metrics', {
+        original: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   // Get failed downloads
   fastify.get('/api/arr/failed', async (request) => {
-    const { app, limit = 20 } = request.query as { app?: string; limit?: number };
+    try {
+      const { app, limit = 20 } = request.query as { app?: string; limit?: number };
 
-    const db = (
-      fastify as { db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } } }
-    ).db;
-    if (!db) {
-      return { success: false, error: 'Database not available' };
+      const db = (
+        fastify as {
+          db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } };
+        }
+      ).db;
+      if (!db) {
+        throw new ServiceUnavailableError('Database not available');
+      }
+
+      let query = 'SELECT * FROM arr_failed_downloads';
+      const params: unknown[] = [];
+
+      if (app) {
+        query += ' WHERE app_name = ?';
+        params.push(app);
+      }
+
+      query += ' ORDER BY failed_at DESC LIMIT ?';
+      params.push(limit);
+
+      const failures = db.prepare(query).all(...params);
+
+      return {
+        success: true,
+        failures,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to fetch failed downloads', {
+        original: error instanceof Error ? error.message : String(error),
+      });
     }
-
-    let query = 'SELECT * FROM arr_failed_downloads';
-    const params: unknown[] = [];
-
-    if (app) {
-      query += ' WHERE app_name = ?';
-      params.push(app);
-    }
-
-    query += ' ORDER BY failed_at DESC LIMIT ?';
-    params.push(limit);
-
-    const failures = db.prepare(query).all(...params);
-
-    return {
-      success: true,
-      failures,
-      timestamp: new Date().toISOString(),
-    };
   });
 
   // Get disk usage trends
   fastify.get('/api/arr/disk-usage', async () => {
-    const db = (
-      fastify as { db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } } }
-    ).db;
-    if (!db) {
-      return { success: false, error: 'Database not available' };
-    }
+    try {
+      const db = (
+        fastify as {
+          db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } };
+        }
+      ).db;
+      if (!db) {
+        throw new ServiceUnavailableError('Database not available');
+      }
 
-    const usage = db
-      .prepare(
-        `
+      const usage = db
+        .prepare(
+          `
       SELECT
         app_name,
         path,
@@ -113,28 +145,39 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
       WHERE checked_at > datetime('now', '-7 days')
       GROUP BY app_name, path
     `,
-      )
-      .all();
+        )
+        .all();
 
-    return {
-      success: true,
-      usage,
-      timestamp: new Date().toISOString(),
-    };
+      return {
+        success: true,
+        usage,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to fetch disk usage trends', {
+        original: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   // Get queue analysis
   fastify.get('/api/arr/queue/analysis', async () => {
-    const db = (
-      fastify as { db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } } }
-    ).db;
-    if (!db) {
-      return { success: false, error: 'Database not available' };
-    }
+    try {
+      const db = (
+        fastify as {
+          db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } };
+        }
+      ).db;
+      if (!db) {
+        throw new ServiceUnavailableError('Database not available');
+      }
 
-    const analysis = db
-      .prepare(
-        `
+      const analysis = db
+        .prepare(
+          `
       SELECT
         app_name,
         AVG(total_items) as avg_queue_size,
@@ -146,75 +189,105 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
       WHERE checked_at > datetime('now', '-24 hours')
       GROUP BY app_name
     `,
-      )
-      .all();
+        )
+        .all();
 
-    return {
-      success: true,
-      analysis,
-      timestamp: new Date().toISOString(),
-    };
+      return {
+        success: true,
+        analysis,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to fetch queue analysis', {
+        original: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   // Get queue stats for an app
   fastify.get('/api/arr/queue/:app', async (request) => {
-    const { app } = request.params as { app: string };
-    const { limit = 50 } = request.query as { limit?: number };
+    try {
+      const { app } = request.params as { app: string };
+      const { limit = 50 } = request.query as { limit?: number };
 
-    const db = (
-      fastify as { db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } } }
-    ).db;
-    if (!db) {
-      return { success: false, error: 'Database not available' };
-    }
+      const db = (
+        fastify as {
+          db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } };
+        }
+      ).db;
+      if (!db) {
+        throw new ServiceUnavailableError('Database not available');
+      }
 
-    const stats = db
-      .prepare(
-        `
+      const stats = db
+        .prepare(
+          `
       SELECT * FROM arr_queue_stats
       WHERE app_name = ?
       ORDER BY checked_at DESC
       LIMIT ?
     `,
-      )
-      .all(app, limit);
+        )
+        .all(app, limit);
 
-    return {
-      success: true,
-      app,
-      stats,
-      timestamp: new Date().toISOString(),
-    };
+      return {
+        success: true,
+        app,
+        stats,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to fetch queue stats', {
+        original: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   // Get health status for an app
   fastify.get('/api/arr/health/:app', async (request) => {
-    const { app } = request.params as { app: string };
-    const { limit = 50 } = request.query as { limit?: number };
+    try {
+      const { app } = request.params as { app: string };
+      const { limit = 50 } = request.query as { limit?: number };
 
-    const db = (
-      fastify as { db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } } }
-    ).db;
-    if (!db) {
-      return { success: false, error: 'Database not available' };
-    }
+      const db = (
+        fastify as {
+          db?: { prepare: (sql: string) => { all: (...params: unknown[]) => unknown[] } };
+        }
+      ).db;
+      if (!db) {
+        throw new ServiceUnavailableError('Database not available');
+      }
 
-    const health = db
-      .prepare(
-        `
+      const health = db
+        .prepare(
+          `
       SELECT * FROM arr_health
       WHERE app_name = ?
       ORDER BY checked_at DESC
       LIMIT ?
     `,
-      )
-      .all(app, limit);
+        )
+        .all(app, limit);
 
-    return {
-      success: true,
-      app,
-      health,
-      timestamp: new Date().toISOString(),
-    };
+      return {
+        success: true,
+        app,
+        health,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to fetch health status', {
+        original: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 }
