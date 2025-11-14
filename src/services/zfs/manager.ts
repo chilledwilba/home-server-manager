@@ -1,29 +1,11 @@
 import { createLogger } from '../../utils/logger.js';
 import type { TrueNASClient } from '../../integrations/truenas/client.js';
 import type Database from 'better-sqlite3';
+import { ZFSPersistence } from './zfs-persistence.js';
+import { SnapshotManager, type SnapshotPolicy } from './snapshot-manager.js';
+import { ScrubScheduler, type ScrubSchedule } from './scrub-scheduler.js';
 
 const logger = createLogger('zfs-manager');
-
-interface SnapshotPolicy {
-  poolName: string;
-  enabled: boolean;
-  frequency: 'hourly' | 'daily' | 'weekly' | 'monthly';
-  retention: {
-    hourly: number;
-    daily: number;
-    weekly: number;
-    monthly: number;
-  };
-  prefix: string;
-}
-
-interface ScrubSchedule {
-  poolName: string;
-  frequency: 'weekly' | 'monthly';
-  dayOfWeek: number; // 0-6, Sunday = 0
-  hour: number; // 0-23
-  type: 'scrub' | 'trim';
-}
 
 /**
  * Unified ZFS Manager
@@ -33,13 +15,18 @@ export class ZFSManager {
   private policies: Map<string, SnapshotPolicy> = new Map();
   private scrubSchedules: Map<string, ScrubSchedule> = new Map();
   private intervals: Map<string, NodeJS.Timeout> = new Map();
+  private persistence: ZFSPersistence;
+  private snapshotManager: SnapshotManager;
+  private scrubScheduler: ScrubScheduler;
 
   constructor(
     // TrueNAS client for future snapshot/scrub API calls
-    // @ts-expect-error - Will be used for actual API calls in production
-    private _truenas: TrueNASClient,
-    private db: Database.Database,
+    _truenas: TrueNASClient,
+    db: Database.Database,
   ) {
+    this.persistence = new ZFSPersistence(db);
+    this.snapshotManager = new SnapshotManager(this.persistence);
+    this.scrubScheduler = new ScrubScheduler(this.persistence);
     this.initializePolicies();
     this.initializeScrubSchedules();
   }
@@ -135,196 +122,26 @@ export class ZFSManager {
 
       const interval = this.getIntervalMs(policy.frequency);
       const timer = setInterval(async () => {
-        await this.createSnapshot(poolName, policy);
-        await this.cleanupOldSnapshots(poolName, policy);
+        await this.snapshotManager.createSnapshot(poolName, policy);
+        await this.snapshotManager.cleanupOldSnapshots(poolName, policy);
       }, interval);
 
       this.intervals.set(`snapshot-${poolName}`, timer);
       logger.info(`Snapshot automation started for ${poolName} (${policy.frequency})`);
 
       // Create initial snapshot
-      void this.createSnapshot(poolName, policy);
+      void this.snapshotManager.createSnapshot(poolName, policy);
     }
 
     // Start scrub scheduler (check every hour)
     const scrubTimer = setInterval(
       async () => {
-        await this.checkAndRunScrubs();
+        await this.scrubScheduler.checkAndRunScrubs(this.scrubSchedules);
       },
       60 * 60 * 1000,
     ); // Check hourly
 
     this.intervals.set('scrub-check', scrubTimer);
-  }
-
-  /**
-   * Create snapshot for a pool
-   */
-  private async createSnapshot(poolName: string, policy: SnapshotPolicy): Promise<void> {
-    try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const snapshotName = `${policy.prefix}-${policy.frequency}-${timestamp}`;
-
-      logger.info(`Creating snapshot: ${poolName}@${snapshotName}`);
-
-      // Note: TrueNAS client would need createSnapshot method
-      // For now, record in database
-      const stmt = this.db.prepare(`
-        INSERT INTO snapshots (
-          pool_name, snapshot_name, type, size, created_at
-        ) VALUES (?, ?, ?, ?, ?)
-      `);
-
-      stmt.run(poolName, snapshotName, policy.frequency, 0, new Date().toISOString());
-
-      logger.info(`Snapshot created: ${snapshotName}`);
-    } catch (error) {
-      logger.error({ err: error }, `Failed to create snapshot for ${poolName}`);
-      this.createAlert('snapshot_failed', 'warning', poolName, error);
-    }
-  }
-
-  /**
-   * Clean up old snapshots based on retention policy
-   */
-  private async cleanupOldSnapshots(poolName: string, policy: SnapshotPolicy): Promise<void> {
-    try {
-      // Get all snapshots for this pool
-      const snapshots = this.db
-        .prepare(
-          `
-        SELECT * FROM snapshots
-        WHERE pool_name = ? AND deleted_at IS NULL
-        ORDER BY created_at DESC
-      `,
-        )
-        .all(poolName) as Array<{
-        id: number;
-        snapshot_name: string;
-        type: string;
-        created_at: string;
-      }>;
-
-      // Group by frequency type
-      const grouped: Record<string, Array<(typeof snapshots)[0]>> = {
-        hourly: [],
-        daily: [],
-        weekly: [],
-        monthly: [],
-      };
-
-      for (const snap of snapshots) {
-        const name = snap['snapshot_name'];
-        if (name && name.includes('-hourly-')) grouped['hourly']?.push(snap);
-        else if (name && name.includes('-daily-')) grouped['daily']?.push(snap);
-        else if (name && name.includes('-weekly-')) grouped['weekly']?.push(snap);
-        else if (name && name.includes('-monthly-')) grouped['monthly']?.push(snap);
-      }
-
-      // Apply retention policies
-      for (const [frequency, snaps] of Object.entries(grouped)) {
-        const retention = policy.retention[frequency as keyof typeof policy.retention];
-        if (retention && snaps && snaps.length > retention) {
-          const toDelete = snaps.slice(retention);
-
-          for (const snap of toDelete) {
-            await this.deleteSnapshot(poolName, snap.snapshot_name);
-          }
-        }
-      }
-    } catch (error) {
-      logger.error({ err: error }, `Cleanup failed for ${poolName}`);
-    }
-  }
-
-  /**
-   * Delete a snapshot
-   */
-  private async deleteSnapshot(poolName: string, snapshotName: string): Promise<void> {
-    try {
-      logger.info(`Deleting old snapshot: ${poolName}@${snapshotName}`);
-
-      const stmt = this.db.prepare(`
-        UPDATE snapshots
-        SET deleted_at = ?
-        WHERE pool_name = ? AND snapshot_name = ?
-      `);
-
-      stmt.run(new Date().toISOString(), poolName, snapshotName);
-    } catch (error) {
-      logger.error({ err: error }, `Failed to delete snapshot ${snapshotName}`);
-    }
-  }
-
-  /**
-   * Check if scrubs should run and execute them
-   */
-  private async checkAndRunScrubs(): Promise<void> {
-    const now = new Date();
-    const hour = now.getHours();
-    const dayOfWeek = now.getDay();
-    const dayOfMonth = now.getDate();
-
-    for (const [poolName, schedule] of this.scrubSchedules) {
-      // Check if time matches
-      if (hour !== schedule.hour) continue;
-
-      let shouldRun = false;
-
-      if (schedule.frequency === 'weekly') {
-        shouldRun = dayOfWeek === schedule.dayOfWeek;
-      } else if (schedule.frequency === 'monthly') {
-        // Run on first occurrence of dayOfWeek in the month
-        shouldRun = dayOfWeek === schedule.dayOfWeek && dayOfMonth <= 7;
-      }
-
-      if (shouldRun) {
-        if (schedule.type === 'scrub') {
-          await this.startScrub(poolName);
-        } else if (schedule.type === 'trim') {
-          await this.startTrim(poolName);
-        }
-      }
-    }
-  }
-
-  /**
-   * Start a scrub operation
-   */
-  private async startScrub(poolName: string): Promise<void> {
-    try {
-      logger.info(`Starting scrub for pool: ${poolName}`);
-
-      const stmt = this.db.prepare(`
-        INSERT INTO scrub_history (
-          pool_name, started_at, status
-        ) VALUES (?, ?, 'running')
-      `);
-
-      stmt.run(poolName, new Date().toISOString());
-      logger.info(`Scrub started for ${poolName}`);
-    } catch (error) {
-      logger.error({ err: error }, `Failed to start scrub for ${poolName}`);
-    }
-  }
-
-  /**
-   * Start TRIM operation for SSDs
-   */
-  private async startTrim(poolName: string): Promise<void> {
-    try {
-      logger.info(`Starting TRIM for SSD pool: ${poolName}`);
-
-      const stmt = this.db.prepare(`
-        INSERT INTO maintenance_history (
-          pool_name, type, started_at
-        ) VALUES (?, 'trim', ?)
-      `);
-
-      stmt.run(poolName, new Date().toISOString());
-    } catch (error) {
-      logger.error({ err: error }, `Failed to start TRIM for ${poolName}`);
-    }
   }
 
   /**
@@ -334,25 +151,7 @@ export class ZFSManager {
     poolName: string,
     reason: string,
   ): Promise<{ success: boolean; snapshotName?: string; error?: string }> {
-    try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const snapshotName = `manual-${reason.replace(/\s+/g, '-')}-${timestamp}`;
-
-      const stmt = this.db.prepare(`
-        INSERT INTO snapshots (
-          pool_name, snapshot_name, type, reason, created_at
-        ) VALUES (?, ?, 'manual', ?, ?)
-      `);
-
-      stmt.run(poolName, snapshotName, reason, new Date().toISOString());
-      logger.info(`Manual snapshot created: ${snapshotName}`);
-
-      return { success: true, snapshotName };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ err: error }, 'Manual snapshot failed');
-      return { success: false, error: errorMsg };
-    }
+    return this.snapshotManager.createManualSnapshot(poolName, reason);
   }
 
   /**
@@ -365,29 +164,7 @@ export class ZFSManager {
     oldest: string;
     newest: string;
   }> {
-    const stats = this.db
-      .prepare(
-        `
-      SELECT
-        pool_name,
-        COUNT(*) as total_snapshots,
-        SUM(size) as total_size,
-        MIN(created_at) as oldest,
-        MAX(created_at) as newest
-      FROM snapshots
-      WHERE deleted_at IS NULL
-      GROUP BY pool_name
-    `,
-      )
-      .all() as Array<{
-      pool_name: string;
-      total_snapshots: number;
-      total_size: number;
-      oldest: string;
-      newest: string;
-    }>;
-
-    return stats;
+    return this.persistence.getSnapshotStats();
   }
 
   /**
@@ -401,27 +178,7 @@ export class ZFSManager {
     status: string;
     errors_found: number;
   }> {
-    const query = poolName
-      ? 'SELECT * FROM scrub_history WHERE pool_name = ? ORDER BY started_at DESC LIMIT 10'
-      : 'SELECT * FROM scrub_history ORDER BY started_at DESC LIMIT 20';
-
-    return poolName
-      ? (this.db.prepare(query).all(poolName) as Array<{
-          id: number;
-          pool_name: string;
-          started_at: string;
-          completed_at?: string;
-          status: string;
-          errors_found: number;
-        }>)
-      : (this.db.prepare(query).all() as Array<{
-          id: number;
-          pool_name: string;
-          started_at: string;
-          completed_at?: string;
-          status: string;
-          errors_found: number;
-        }>);
+    return this.persistence.getScrubHistory(poolName);
   }
 
   /**
@@ -435,22 +192,7 @@ export class ZFSManager {
     status: string;
     started_at: string;
   }> {
-    return this.db
-      .prepare(
-        `
-      SELECT * FROM backup_history
-      ORDER BY started_at DESC
-      LIMIT ?
-    `,
-      )
-      .all(limit) as Array<{
-      id: number;
-      job_id: string;
-      source: string;
-      target: string;
-      status: string;
-      started_at: string;
-    }>;
+    return this.persistence.getBackupHistory(limit);
   }
 
   /**
@@ -508,30 +250,6 @@ export class ZFSManager {
         return 30 * 24 * 60 * 60 * 1000;
       default:
         return 24 * 60 * 60 * 1000;
-    }
-  }
-
-  /**
-   * Create alert
-   */
-  private createAlert(type: string, severity: string, pool: string, error: unknown): void {
-    try {
-      const stmt = this.db.prepare(`
-        INSERT INTO alerts (type, severity, message, details, triggered_at)
-        VALUES (?, ?, ?, ?, ?)
-      `);
-
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-
-      stmt.run(
-        type,
-        severity,
-        `ZFS ${type} for pool ${pool}`,
-        JSON.stringify({ pool, error: errorMsg }),
-        new Date().toISOString(),
-      );
-    } catch (err) {
-      logger.error({ err }, 'Failed to create alert');
     }
   }
 
