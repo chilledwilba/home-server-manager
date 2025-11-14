@@ -14,7 +14,7 @@ import { zfsRoutes } from '../routes/zfs.js';
 import { notificationRoutes } from '../routes/notifications.js';
 import { remediationRoutes } from '../routes/remediation.js';
 import { arrRoutes } from '../routes/arr.js';
-import { infrastructureRoutes } from '../routes/infrastructure.js';
+import { infrastructureRoutes } from '../routes/infrastructure/index.js';
 import { logger } from '../utils/logger.js';
 
 /**
