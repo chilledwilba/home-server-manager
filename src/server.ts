@@ -437,6 +437,38 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
     logger.info('UPS routes registered');
   }
 
+  // Register AI insights routes (Phase 6.5)
+  const ollamaEnabled = process.env['OLLAMA_ENABLED'] === 'true';
+  if (ollamaEnabled) {
+    try {
+      const { aiInsightsRoutes } = await import('./routes/ai-insights.js');
+      await fastify.register(aiInsightsRoutes, {
+        db,
+        ollamaEnabled: true,
+        ollamaConfig: {
+          host: process.env['OLLAMA_HOST'] || 'localhost',
+          port: parseInt(process.env['OLLAMA_PORT'] || '11434', 10),
+          model: process.env['OLLAMA_MODEL'] || 'llama2:13b',
+        },
+      });
+      logger.info('AI insights routes registered with Ollama integration');
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to register AI insights routes');
+    }
+  } else {
+    // Register AI insights without Ollama (still provides statistical analysis)
+    try {
+      const { aiInsightsRoutes } = await import('./routes/ai-insights.js');
+      await fastify.register(aiInsightsRoutes, {
+        db,
+        ollamaEnabled: false,
+      });
+      logger.info('AI insights routes registered (statistical analysis only)');
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to register AI insights routes');
+    }
+  }
+
   // Enhanced health check endpoint with actual connectivity tests
   fastify.get('/health', async (_request, reply) => {
     const checks = {
