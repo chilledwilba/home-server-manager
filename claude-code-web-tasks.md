@@ -2568,10 +2568,81 @@ Phases 1-7 are **100% complete**! The codebase is now enterprise-grade and produ
 ### Success Criteria
 
 - [ ] All tests passing (208/208)
-- [ ] ESLint warnings reduced to <10 (currently 73)
+- [ ] ESLint warnings reduced to <10 (currently 73-74)
 - [ ] All edge cases handled
 - [ ] Documentation updated
 - [ ] Optional enhancements complete
+
+---
+
+### 📋 PHASE 8 ERROR SUMMARY
+
+**Found During**: `git push` pre-push hook validation
+
+**Issues to Fix:**
+
+| Issue               | Count | Priority  | Est. Time         | Status      |
+| ------------------- | ----- | --------- | ----------------- | ----------- |
+| Test failures       | 2     | 🔴 HIGH   | 30-60 min         | ❌ Required |
+| ESLint warnings     | 73-74 | 🟡 MEDIUM | 1-2 hours         | ⚪ Optional |
+| Pre-push hook block | 1     | 🔴 HIGH   | 0 min (fix tests) | ❌ Blocking |
+
+**Test Failures Details:**
+
+1. `tests/unit/services/ai/insights-service.test.ts:166` - "should detect high memory usage"
+   - **Error**: `expect(result.detected).toBe(true)` → received `false`
+   - **Cause**: Insufficient baseline data for statistical anomaly detection
+   - **Fix**: Add 10+ baseline data points before test assertion
+
+2. `tests/unit/services/ai/insights-service.test.ts:246` - "should store anomalies in database"
+   - **Error**: `expect(storedAnomalies.length).toBeGreaterThan(0)` → received `0`
+   - **Cause**: No anomalies detected due to insufficient baseline
+   - **Fix**: Add 10+ baseline data points before anomaly insertion
+
+**ESLint Warnings Details:**
+
+- 65 warnings: `@typescript-eslint/require-await` (async functions without await)
+- 5 warnings: `@typescript-eslint/no-misused-promises` (promises in void context)
+- 3 warnings: `@typescript-eslint/no-unsafe-assignment` (unsafe any assignments)
+
+**Files Most Affected:**
+
+- `src/core/service-container.ts` - 5 warnings
+- `src/routes/*.ts` - ~30 warnings
+- `src/services/**/*.ts` - ~25 warnings
+- `src/middleware/*.ts` - ~13 warnings
+
+---
+
+### ⚠️ IMPORTANT: Understanding Test Errors vs Test Failures
+
+**When running tests, you will see many ERROR logs - THIS IS NORMAL!**
+
+The test suite logs error messages when testing error handling paths. These are **intentional and expected**:
+
+```
+[ERROR]: Container monitoring error - "Connection refused"
+[ERROR]: Database error - "UNIQUE constraint failed"
+[ERROR]: Pool monitoring error - "Connection timeout"
+```
+
+**These are NOT test failures** - they are the tests verifying that error handling works correctly.
+
+**Actual Test Failures** look like this:
+
+```
+FAIL tests/unit/services/ai/insights-service.test.ts
+  ● AIInsightsService › Anomaly Detection › should detect high memory usage
+    expect(received).toBe(expected)
+    Expected: true
+    Received: false
+```
+
+**Current Status:**
+
+- ✅ 206 tests **passing**
+- ❌ 2 tests **failing** (both in AI insights)
+- ✅ Error handling working correctly (verified by error log tests)
 
 ---
 
@@ -2654,14 +2725,30 @@ npm test -- tests/unit/services/ai/insights-service.test.ts
 **Time**: 1-2 hours
 **Priority**: MEDIUM (non-blocking but improves code quality)
 
-**Current State**: 73 warnings, 0 errors
+**Current State**: 73-74 warnings, 0 errors ✅
 **Target**: <10 warnings
+
+**Warning Breakdown by Type:**
+
+1. `@typescript-eslint/require-await` - ~65 warnings (89%)
+2. `@typescript-eslint/no-misused-promises` - ~5 warnings (7%)
+3. `@typescript-eslint/no-unsafe-assignment` - ~3 warnings (4%)
 
 **Categories of Warnings**:
 
-#### A. `@typescript-eslint/require-await` (most common)
+#### A. `@typescript-eslint/require-await` (~65 warnings, most common)
 
 Functions marked `async` but don't use `await`.
+
+**Affected Files (priority order):**
+
+- `src/core/service-container.ts` - 5 warnings (lines 117, 184, 282, 311, 384)
+- `src/middleware/error-handler.ts` - 1 warning (line 28)
+- `src/middleware/correlation-id.ts` - 1 warning (line 12)
+- `src/middleware/request-logger.ts` - 2 warnings (lines 26, 65)
+- `src/routes/ai-insights.ts` - 2 warnings (lines 18, 35+)
+- Many route files - ~30 warnings total
+- Service files - ~20 warnings total
 
 **Fix Options**:
 
@@ -2837,6 +2924,69 @@ git add .
 git commit -m "chore: Phase 8 cleanup - fix tests and reduce ESLint warnings"
 git push origin main
 ```
+
+---
+
+### 🚨 TROUBLESHOOTING: Git Push Failures
+
+**Issue**: `git push` fails with pre-push hook error
+
+**Why**: The repository has a pre-push hook (`.husky/pre-push`) that runs the full test suite before allowing pushes. This prevents broken code from reaching the remote repository.
+
+**Pre-push Hook Runs:**
+
+1. Full test suite (`npm test`)
+2. If any tests fail → push is blocked
+
+**Current Situation:**
+
+- 2 tests failing → pre-push hook blocks push
+- Must fix tests OR bypass hook temporarily
+
+**Solution Options:**
+
+**Option 1: Fix Tests First (RECOMMENDED)**
+
+```bash
+# Fix the 2 failing tests (see Task 1 above)
+npm test -- tests/unit/services/ai/insights-service.test.ts
+# Should show: Tests: 29 passed, 29 total
+
+# Now push will work
+git push origin main
+```
+
+**Option 2: Bypass Hook Temporarily (USE WITH CAUTION)**
+
+```bash
+# Only use if you understand the risks
+git push --no-verify origin main
+```
+
+**⚠️ Warning**: Option 2 bypasses all safety checks. Use only if:
+
+- Tests are pre-existing failures (not regressions)
+- You're pushing documentation/config changes
+- You plan to fix tests in the next commit
+
+**What Happens During `git push`:**
+
+1. **Pre-commit hooks run** ✅ (file size checks, linting, type checking)
+2. **Commit created** ✅
+3. **Pre-push hook runs** → `npm test`
+4. **If tests fail** → Push blocked with error:
+   ```
+   Tests: 2 failed, 206 passed
+   husky - pre-push script failed (code 1)
+   error: failed to push some refs
+   ```
+5. **If tests pass** → Push succeeds
+
+**Best Practice:**
+
+- Always fix failing tests before pushing
+- Use `--no-verify` only for documentation updates
+- Never bypass hooks for code changes
 
 ---
 
