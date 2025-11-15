@@ -309,15 +309,17 @@ Benefits:
 - ✅ Created comprehensive unit tests for TrueNASClient (24 tests, 100% coverage)
 - ✅ Created comprehensive unit tests for OllamaClient (24 tests, 100% coverage)
 - ✅ Created comprehensive unit tests for CloudflareTunnelClient (24 tests, 100% coverage)
-- 📊 **Total new tests created: 350 tests**
+- ✅ Created comprehensive unit tests for ArrClient & PlexClient (43 tests, 97.36% coverage)
+- 📊 **Total new tests created: 393 tests**
 - 📈 **Utils coverage: 75.49%** (up from 53%)
 - 📈 **Middleware coverage: 47.56%** (up from 36.28%)
 - 📈 **Portainer integration coverage: 93.68%** (up from 0%)
 - 📈 **TrueNAS integration coverage: 100%** (up from 0%)
 - 📈 **Ollama integration coverage: 100%** (up from 7.4%)
 - 📈 **Cloudflare integration coverage: 100%** (up from 94.23%)
-- 📈 **Global coverage: 20.06%** (up from 11.76%)
-- 🎯 Target: 30% global coverage (Progress: 67% toward goal)
+- 📈 **Arr Apps integration coverage: 97.36%** (up from 0%)
+- 📈 **Global coverage: 21.74%** (up from 11.76%)
+- 🎯 Target: 30% global coverage (Progress: 73% toward goal)
 - 📝 Note: Many service tests blocked by better-sqlite3 native module compilation in Docker environment
 
 ## Current State Analysis
