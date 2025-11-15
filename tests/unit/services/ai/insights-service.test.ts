@@ -153,13 +153,15 @@ describe('AIInsightsService', () => {
     });
 
     it('should detect high memory usage', async () => {
-      // Insert high memory usage
+      // Insert high memory usage with a timestamp definitely newer than beforeEach data
+      // beforeEach uses Date.now() - (0 to 23) hours, so we use a future timestamp
+      const futureTime = Date.now() + 1000; // 1 second in the future
       db.prepare(
         `
         INSERT INTO metrics (timestamp, cpu_percent, ram_percent, ram_used_gb)
         VALUES (?, ?, ?, ?)
       `,
-      ).run(new Date().toISOString(), 35, 92, 58);
+      ).run(new Date(futureTime).toISOString(), 35, 92, 58);
 
       const result = await service.detectAnomalies(24);
 
@@ -220,24 +222,14 @@ describe('AIInsightsService', () => {
     });
 
     it('should store anomalies in database', async () => {
-      // Insert baseline data (normal CPU usage)
-      for (let i = 0; i < 10; i++) {
-        const timestamp = new Date(Date.now() - i * 60 * 60 * 1000).toISOString();
-        db.prepare(
-          `
-          INSERT INTO metrics (timestamp, cpu_percent, ram_percent)
-          VALUES (?, ?, ?)
-        `,
-        ).run(timestamp, 30 + Math.random() * 10, 50 + Math.random() * 10);
-      }
-
-      // Insert anomalous data
+      // Insert anomalous CPU spike with a timestamp definitely newer than beforeEach data
+      const futureTime = Date.now() + 1000; // 1 second in the future
       db.prepare(
         `
         INSERT INTO metrics (timestamp, cpu_percent, ram_percent)
         VALUES (?, ?, ?)
       `,
-      ).run(new Date().toISOString(), 98, 55);
+      ).run(new Date(futureTime).toISOString(), 98, 55);
 
       await service.detectAnomalies(24);
 
@@ -261,13 +253,7 @@ describe('AIInsightsService', () => {
           INSERT INTO pool_metrics (timestamp, pool_name, used_bytes, total_bytes, percent_used)
           VALUES (?, ?, ?, ?, ?)
         `,
-        ).run(
-          timestamp,
-          'tank',
-          usage,
-          10000000000000,
-          (usage / 10000000000000) * 100,
-        );
+        ).run(timestamp, 'tank', usage, 10000000000000, (usage / 10000000000000) * 100);
       }
     });
 
@@ -305,13 +291,7 @@ describe('AIInsightsService', () => {
           INSERT INTO pool_metrics (timestamp, pool_name, used_bytes, total_bytes, percent_used)
           VALUES (?, ?, ?, ?, ?)
         `,
-        ).run(
-          timestamp,
-          'tank',
-          usage,
-          10000000000000,
-          85,
-        );
+        ).run(timestamp, 'tank', usage, 10000000000000, 85);
       }
 
       const predictions = await service.predictCapacity('storage');
