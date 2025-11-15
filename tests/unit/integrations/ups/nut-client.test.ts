@@ -1,6 +1,6 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { promisify } from 'node:util';
-import { NUTClient } from '../../../../src/integrations/ups/nut-client.js';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { exec } from 'node:child_process';
 
 // Mock logger
 jest.mock('../../../../src/utils/logger.js', () => ({
@@ -12,30 +12,35 @@ jest.mock('../../../../src/utils/logger.js', () => ({
   })),
 }));
 
-// Mock exec
-jest.mock('node:child_process');
-jest.mock('node:util', () => ({
-  promisify: jest.fn(),
+// Mock exec from child_process
+jest.mock('node:child_process', () => ({
+  exec: jest.fn(),
 }));
 
-const mockedPromisify = promisify as jest.MockedFunction<typeof promisify>;
+const mockedExec = exec as jest.MockedFunction<typeof exec>;
 
-describe.skip('NUTClient', () => {
-  // TODO: Fix mocking for child_process and util.promisify in Jest
-  // The implementation is correct but the test mocking needs work
-  let client: InstanceType<typeof NUTClient>;
-  let mockExecAsync: jest.MockedFunction<(cmd: string, options?: unknown) => Promise<{ stdout: string; stderr: string }>>;
+describe('NUTClient', () => {
+  let NUTClient: typeof import('../../../../src/integrations/ups/nut-client.js').NUTClient;
+  let client: InstanceType<
+    typeof import('../../../../src/integrations/ups/nut-client.js').NUTClient
+  >;
 
-  beforeEach(() => {
-    // Create mock execAsync
-    mockExecAsync = jest.fn();
-    mockedPromisify.mockReturnValue(mockExecAsync as never);
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    // Dynamically import after mocks are set up
+    const module = await import('../../../../src/integrations/ups/nut-client.js');
+    NUTClient = module.NUTClient;
 
     client = new NUTClient({
       host: 'localhost',
       port: 3493,
       upsName: 'ups',
     });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('Constructor', () => {
@@ -66,10 +71,10 @@ ups.model: Back-UPS ES 750G
 ups.mfr: APC
 ups.serial: ABC123XYZ`;
 
-      mockExecAsync.mockResolvedValueOnce({
-        stdout: mockOutput,
-        stderr: '',
-      });
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(null, { stdout: mockOutput, stderr: '' });
+        return {} as any;
+      }) as any);
 
       const status = await client.getStatus();
 
@@ -95,10 +100,10 @@ ups.model: Back-UPS ES 750G
 ups.mfr: APC
 ups.serial: ABC123XYZ`;
 
-      mockExecAsync.mockResolvedValueOnce({
-        stdout: mockOutput,
-        stderr: '',
-      });
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(null, { stdout: mockOutput, stderr: '' });
+        return {} as any;
+      }) as any);
 
       const status = await client.getStatus();
 
@@ -113,10 +118,10 @@ ups.serial: ABC123XYZ`;
       const mockOutput = `ups.status: OL
 ups.model: Unknown UPS`;
 
-      mockExecAsync.mockResolvedValueOnce({
-        stdout: mockOutput,
-        stderr: '',
-      });
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(null, { stdout: mockOutput, stderr: '' });
+        return {} as any;
+      }) as any);
 
       const status = await client.getStatus();
 
@@ -128,7 +133,10 @@ ups.model: Unknown UPS`;
     });
 
     it('should throw error on command failure', async () => {
-      mockExecAsync.mockRejectedValueOnce(new Error('Connection failed'));
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(new Error('Connection failed'));
+        return {} as any;
+      }) as any);
 
       await expect(client.getStatus()).rejects.toThrow('UPS communication failed');
     });
@@ -140,10 +148,10 @@ ups.model: Unknown UPS`;
 ups2
 backup-ups`;
 
-      mockExecAsync.mockResolvedValueOnce({
-        stdout: mockOutput,
-        stderr: '',
-      });
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(null, { stdout: mockOutput, stderr: '' });
+        return {} as any;
+      }) as any);
 
       const devices = await client.listDevices();
 
@@ -151,7 +159,10 @@ backup-ups`;
     });
 
     it('should return empty array on error', async () => {
-      mockExecAsync.mockRejectedValueOnce(new Error('No devices'));
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(new Error('No devices'));
+        return {} as any;
+      }) as any);
 
       const devices = await client.listDevices();
 
@@ -164,10 +175,10 @@ backup-ups`;
 ups2
 `;
 
-      mockExecAsync.mockResolvedValueOnce({
-        stdout: mockOutput,
-        stderr: '',
-      });
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(null, { stdout: mockOutput, stderr: '' });
+        return {} as any;
+      }) as any);
 
       const devices = await client.listDevices();
 
@@ -182,10 +193,10 @@ battery.runtime: 3600
 ups.status: OL
 ups.model: Test UPS`;
 
-      mockExecAsync.mockResolvedValueOnce({
-        stdout: mockOutput,
-        stderr: '',
-      });
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(null, { stdout: mockOutput, stderr: '' });
+        return {} as any;
+      }) as any);
 
       const variables = await client.getVariables();
 
@@ -199,10 +210,10 @@ ups.model: Test UPS`;
       const mockOutput = `device.serial: ABC:123:XYZ
 ups.model: Test: UPS Model`;
 
-      mockExecAsync.mockResolvedValueOnce({
-        stdout: mockOutput,
-        stderr: '',
-      });
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(null, { stdout: mockOutput, stderr: '' });
+        return {} as any;
+      }) as any);
 
       const variables = await client.getVariables();
 
@@ -211,7 +222,10 @@ ups.model: Test: UPS Model`;
     });
 
     it('should throw error on failure', async () => {
-      mockExecAsync.mockRejectedValueOnce(new Error('Failed to fetch'));
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(new Error('Failed to fetch'));
+        return {} as any;
+      }) as any);
 
       await expect(client.getVariables()).rejects.toThrow('Failed to retrieve UPS variables');
     });
@@ -221,10 +235,10 @@ ups.model: Test: UPS Model`;
     it('should return true when UPS is available', async () => {
       const mockOutput = `ups.status: OL`;
 
-      mockExecAsync.mockResolvedValueOnce({
-        stdout: mockOutput,
-        stderr: '',
-      });
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(null, { stdout: mockOutput, stderr: '' });
+        return {} as any;
+      }) as any);
 
       const available = await client.isAvailable();
 
@@ -232,7 +246,10 @@ ups.model: Test: UPS Model`;
     });
 
     it('should return false when UPS is not available', async () => {
-      mockExecAsync.mockRejectedValueOnce(new Error('Connection failed'));
+      mockedExec.mockImplementationOnce(((_cmd: string, _options: any, callback: any) => {
+        callback(new Error('Connection failed'));
+        return {} as any;
+      }) as any);
 
       const available = await client.isAvailable();
 
