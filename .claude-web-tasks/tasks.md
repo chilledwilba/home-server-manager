@@ -311,7 +311,9 @@ Benefits:
 - ✅ Created comprehensive unit tests for CloudflareTunnelClient (24 tests, 100% coverage)
 - ✅ Created comprehensive unit tests for ArrClient & PlexClient (43 tests, 97.36% coverage)
 - ✅ Fixed and enabled NUTClient tests (18 tests, 100% coverage)
-- 📊 **Total new tests created: 411 tests**
+- ✅ Created route tests for notifications (9 tests)
+- ✅ Created route tests for docker (14 tests)
+- 📊 **Total new tests created: 434 tests**
 - 📈 **Utils coverage: 75.49%** (up from 53%)
 - 📈 **Middleware coverage: 47.56%** (up from 36.28%)
 - 📈 **Portainer integration coverage: 93.68%** (up from 0%)
@@ -320,8 +322,8 @@ Benefits:
 - 📈 **Cloudflare integration coverage: 100%** (up from 94.23%)
 - 📈 **Arr Apps integration coverage: 97.36%** (up from 0%)
 - 📈 **UPS/NUT integration coverage: 100%** (up from 10.16%)
-- 📈 **Global coverage: 23.17%** (up from 11.76%)
-- 🎯 Target: 30% global coverage (Progress: 81% toward goal)
+- 📈 **Global coverage: 24.31%** (up from 11.76%)
+- 🎯 Target: 30% global coverage (Progress: 84% toward goal)
 - 📝 Note: Many service tests blocked by better-sqlite3 native module compilation in Docker environment
 
 ## Current State Analysis
