@@ -5,24 +5,24 @@
 > **Total Tasks**: 10 priorities, ~40 sub-tasks
 > **Estimated Time**: 25-35 hours total
 
-## 🎯 Current Focus: Priority 1
+## 🎯 Current Focus: Priority 2
 
-Start with: **Priority 1 - Migrate npm to pnpm**
+Start with: **Priority 2 - Test Coverage to 30%+**
 
 ## 📊 Progress Tracker
 
-| Priority | Task | Status | Time Est. | Completed |
-|----------|------|--------|-----------|-----------|
-| P1 | npm → pnpm Migration | 🔴 Not Started | 2-3h | - |
-| P2 | Test Coverage to 30%+ | 🔴 Not Started | 4-6h | - |
-| P3 | OpenAPI/Swagger Docs | 🔴 Not Started | 3-4h | - |
-| P4 | Error Handling Standard | 🔴 Not Started | 2-3h | - |
-| P5 | Feature Flags System | 🔴 Not Started | 2-3h | - |
-| P6 | Context7 MCP Integration | 🔴 Not Started | 1-2h | - |
-| P7 | DB Migration Safety | 🔴 Not Started | 2-3h | - |
-| P8 | E2E Test Foundation | 🔴 Not Started | 3-4h | - |
-| P9 | Dependency Update Strategy | 🔴 Not Started | 1-2h | - |
-| P10 | Performance Monitoring | 🔴 Not Started | 2-3h | - |
+| Priority | Task                       | Status         | Time Est. | Completed  |
+| -------- | -------------------------- | -------------- | --------- | ---------- |
+| P1       | npm → pnpm Migration       | 🟢 Completed   | 2-3h      | 2025-11-15 |
+| P2       | Test Coverage to 30%+      | 🔴 Not Started | 4-6h      | -          |
+| P3       | OpenAPI/Swagger Docs       | 🔴 Not Started | 3-4h      | -          |
+| P4       | Error Handling Standard    | 🔴 Not Started | 2-3h      | -          |
+| P5       | Feature Flags System       | 🔴 Not Started | 2-3h      | -          |
+| P6       | Context7 MCP Integration   | 🔴 Not Started | 1-2h      | -          |
+| P7       | DB Migration Safety        | 🔴 Not Started | 2-3h      | -          |
+| P8       | E2E Test Foundation        | 🔴 Not Started | 3-4h      | -          |
+| P9       | Dependency Update Strategy | 🔴 Not Started | 1-2h      | -          |
+| P10      | Performance Monitoring     | 🔴 Not Started | 2-3h      | -          |
 
 **Status Legend**: 🔴 Not Started | 🟡 In Progress | 🟢 Completed | 🔵 Blocked
 
@@ -41,6 +41,7 @@ Start with: **Priority 1 - Migrate npm to pnpm**
 ### Task Completion Protocol:
 
 When completing a task:
+
 1. ✅ Update status in Progress Tracker above
 2. ✅ Add entry to `completed.md` with timestamp and commit hash
 3. ✅ Move to next task or priority
@@ -50,7 +51,7 @@ When completing a task:
 
 # Priority 1: Migrate npm → pnpm ⚡
 
-**Status**: 🔴 Not Started
+**Status**: 🟢 Completed
 **Estimated Time**: 2-3 hours
 **Why**: pnpm is faster (50%+), more efficient disk usage, stricter dependency resolution prevents phantom dependencies
 **Impact**: HIGH - Affects entire build pipeline, CI/CD, Docker
@@ -66,6 +67,7 @@ When completing a task:
 ## Task Checklist
 
 ### Step 1: Create pnpm Workspace Configuration
+
 - [ ] Create `pnpm-workspace.yaml` in project root
   ```yaml
   packages:
@@ -73,6 +75,7 @@ When completing a task:
   ```
 
 ### Step 2: Clean npm Artifacts
+
 - [ ] Remove `package-lock.json` from root
 - [ ] Remove `client/package-lock.json`
 - [ ] Add to `.gitignore`:
@@ -82,6 +85,7 @@ When completing a task:
   ```
 
 ### Step 3: Update Root package.json Scripts
+
 - [ ] Update all scripts that use `npm` to use `pnpm`
 - [ ] Change `npm ci` → `pnpm install --frozen-lockfile`
 - [ ] Change `npm run` → `pnpm run`
@@ -91,6 +95,7 @@ When completing a task:
   - `type-check:client`: `cd client && pnpm run type-check` → `pnpm --filter home-server-monitor-ui type-check`
 
 ### Step 4: Update CI/CD Pipeline
+
 - [ ] Update `.github/workflows/ci.yml`:
   - Change `cache: 'npm'` → `cache: 'pnpm'`
   - Add pnpm installation step before dependencies:
@@ -105,7 +110,9 @@ When completing a task:
   - Change `npm audit` → `pnpm audit`
 
 ### Step 5: Update Dockerfile
+
 - [ ] Update `Dockerfile` to use pnpm:
+
   ```dockerfile
   # Multi-stage build for Home Server Monitor
   FROM node:20-alpine AS builder
@@ -167,10 +174,13 @@ When completing a task:
   ```
 
 ### Step 6: Update Docker Compose
+
 - [ ] Update `docker-compose.yml` if needed (likely no changes required)
 
 ### Step 7: Update Git Hooks
+
 - [ ] Update `.husky/pre-commit`:
+
   ```bash
   #!/bin/sh
   . "$(dirname "$0")/_/husky.sh"
@@ -186,6 +196,7 @@ When completing a task:
   ```
 
 - [ ] Update `.husky/pre-push`:
+
   ```bash
   #!/bin/sh
   . "$(dirname "$0")/_/husky.sh"
@@ -198,21 +209,25 @@ When completing a task:
   ```
 
 ### Step 8: Update lint-staged Configuration
+
 - [ ] `.lintstagedrc.json` should work as-is (uses npx which pnpm supports)
 - [ ] Test to ensure it works with pnpm
 
 ### Step 9: Initial Installation
+
 - [ ] Run `pnpm install` in project root
 - [ ] Verify `pnpm-lock.yaml` created
 - [ ] Verify `node_modules` structure
 
 ### Step 10: Update Documentation
+
 - [ ] Update README.md (if exists) with pnpm commands
 - [ ] Update any setup guides in `docs/` directory
 - [ ] Update `docs/home-server-monitor/QUICK-START.md`
 - [ ] Update `docs/home-server-monitor/DEPLOYMENT-CONFIG.md`
 
 ### Step 11: Verification Tests
+
 - [ ] Run `pnpm install` - should complete without errors
 - [ ] Run `pnpm run type-check` - should pass
 - [ ] Run `pnpm run lint` - should pass
@@ -284,6 +299,7 @@ Benefits:
 ## Current State Analysis
 
 From test coverage report:
+
 - **Current Coverage**: ~24% (below 25% threshold)
 - **Services with 0% coverage**: security scanner, ZFS manager, Arr optimizer, UPS services
 - **Utils**: 38% coverage (need improvement)
@@ -292,6 +308,7 @@ From test coverage report:
 ## Task Checklist
 
 ### Step 1: Create Integration Test Infrastructure
+
 - [ ] Create `tests/integration/setup.ts` with test database setup
 - [ ] Create `tests/integration/helpers/test-server.ts` - lightweight Fastify instance for testing
 - [ ] Create `tests/integration/helpers/mock-clients.ts` - mock TrueNAS, Portainer clients
@@ -300,12 +317,14 @@ From test coverage report:
 ### Step 2: Add Critical Integration Tests
 
 #### File: `tests/integration/api/health.test.ts`
+
 - [ ] Test GET `/health` returns 200
 - [ ] Test health check includes database status
 - [ ] Test health check includes service status
 - [ ] Test health check fails when database unavailable
 
 #### File: `tests/integration/services/monitoring-flow.test.ts`
+
 - [ ] Test full monitoring cycle:
   1. Initialize ServiceContainer
   2. Start monitoring
@@ -315,6 +334,7 @@ From test coverage report:
   6. Shutdown gracefully
 
 #### File: `tests/integration/database/migrations.test.ts`
+
 - [ ] Test all migrations run successfully
 - [ ] Test migrations are idempotent (can run multiple times)
 - [ ] Test rollback works (if supported)
@@ -323,6 +343,7 @@ From test coverage report:
 ### Step 3: Add Unit Tests for Uncovered Services
 
 #### File: `tests/unit/services/security/scanner.test.ts`
+
 - [ ] Test container permission scanning
 - [ ] Test file permission detection
 - [ ] Test vulnerability detection
@@ -330,6 +351,7 @@ From test coverage report:
 - [ ] Mock external API calls
 
 #### File: `tests/unit/services/zfs/manager.test.ts`
+
 - [ ] Test snapshot creation logic
 - [ ] Test scrub scheduling
 - [ ] Test pool health parsing
@@ -337,12 +359,14 @@ From test coverage report:
 - [ ] Mock TrueNAS client
 
 #### File: `tests/unit/services/arr/arr-optimizer.test.ts`
+
 - [ ] Test queue optimization logic
 - [ ] Test download path recommendations
 - [ ] Test concurrent download calculations
 - [ ] Mock Arr API clients
 
 #### File: `tests/unit/utils/metrics.test.ts`
+
 - [ ] Test metric registration
 - [ ] Test metric recording
 - [ ] Test Prometheus format export
@@ -350,16 +374,19 @@ From test coverage report:
 ### Step 4: Improve Existing Test Coverage
 
 #### Enhance `tests/unit/utils/validation.test.ts`
+
 - [ ] Add edge case tests
 - [ ] Test all validation schemas
 - [ ] Test error messages
 
 #### Enhance `tests/unit/middleware/error-handler.test.ts`
+
 - [ ] Test all error types
 - [ ] Test error transformation
 - [ ] Test correlation ID inclusion
 
 ### Step 5: Update Test Configuration
+
 - [ ] Update `jest.config.js` coverage threshold to 30%:
   ```javascript
   coverageThreshold: {
@@ -373,6 +400,7 @@ From test coverage report:
   ```
 
 ### Step 6: Add Test Helpers
+
 - [ ] Create `tests/helpers/assertions.ts` - custom Jest matchers
 - [ ] Create `tests/helpers/factories.ts` - test data factories
 - [ ] Create `tests/helpers/database.ts` - database test utilities
@@ -380,6 +408,7 @@ From test coverage report:
 ## Example Test Structure
 
 ### Integration Test Template:
+
 ```typescript
 // tests/integration/api/health.test.ts
 import { setupTestServer, closeTestServer } from '../helpers/test-server';
@@ -414,6 +443,7 @@ describe('Health API Integration', () => {
 ```
 
 ### Unit Test Template:
+
 ```typescript
 // tests/unit/services/security/scanner.test.ts
 import { SecurityScanner } from '@/services/security/scanner';
@@ -437,9 +467,7 @@ describe('SecurityScanner', () => {
     it('should detect containers running as root', async () => {
       const findings = await scanner.scanContainerPermissions();
 
-      const rootFindings = findings.filter(f =>
-        f.title.includes('Running as root')
-      );
+      const rootFindings = findings.filter((f) => f.title.includes('Running as root'));
 
       expect(rootFindings.length).toBeGreaterThan(0);
       expect(rootFindings[0]).toHaveProperty('severity', 'high');
@@ -505,12 +533,15 @@ Coverage improvement: 24% → 30%+
 ## Task Checklist
 
 ### Step 1: Install Dependencies
+
 - [ ] Install `@fastify/swagger`: `pnpm add @fastify/swagger`
 - [ ] Install `@fastify/swagger-ui`: `pnpm add @fastify/swagger-ui`
 - [ ] Install `zod-to-json-schema`: `pnpm add zod-to-json-schema`
 
 ### Step 2: Create Swagger Configuration
+
 - [ ] Create `src/config/swagger.ts`:
+
   ```typescript
   import type { SwaggerOptions } from '@fastify/swagger';
   import type { FastifySwaggerUiOptions } from '@fastify/swagger-ui';
@@ -559,7 +590,9 @@ Coverage improvement: 24% → 30%+
   ```
 
 ### Step 3: Register Swagger in Server
+
 - [ ] Update `src/server.ts` to register Swagger plugins:
+
   ```typescript
   import fastifySwagger from '@fastify/swagger';
   import fastifySwaggerUi from '@fastify/swagger-ui';
@@ -573,8 +606,10 @@ Coverage improvement: 24% → 30%+
 ### Step 4: Add Schema Definitions
 
 #### Create `src/schemas/health.schema.ts`
+
 - [ ] Define health check response schema using Zod
 - [ ] Convert to JSON Schema for OpenAPI
+
   ```typescript
   import { z } from 'zod';
   import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -591,16 +626,15 @@ Coverage improvement: 24% → 30%+
     }),
   });
 
-  export const healthResponseJsonSchema = zodToJsonSchema(
-    healthResponseSchema,
-    'HealthResponse'
-  );
+  export const healthResponseJsonSchema = zodToJsonSchema(healthResponseSchema, 'HealthResponse');
   ```
 
 #### Create `src/schemas/error.schema.ts`
+
 - [ ] Define standard error response schema
 
 #### Create schemas for each domain:
+
 - [ ] `src/schemas/truenas.schema.ts`
 - [ ] `src/schemas/containers.schema.ts`
 - [ ] `src/schemas/pools.schema.ts`
@@ -609,6 +643,7 @@ Coverage improvement: 24% → 30%+
 ### Step 5: Add Route Documentation
 
 #### Update `src/core/health-routes.ts`
+
 - [ ] Add schema to health route:
   ```typescript
   app.get(
@@ -624,23 +659,27 @@ Coverage improvement: 24% → 30%+
     },
     async (request, reply) => {
       // existing implementation
-    }
+    },
   );
   ```
 
 #### Update all routes in `src/routes/**/*.ts`
+
 - [ ] Add schemas to all GET routes
 - [ ] Add schemas to all POST routes
 - [ ] Add schemas to all PUT/PATCH routes
 - [ ] Add schemas to all DELETE routes
 
 ### Step 6: Add Request Validation
+
 - [ ] Update routes to validate request bodies against schemas
 - [ ] Add query parameter validation
 - [ ] Add path parameter validation
 
 ### Step 7: Generate OpenAPI Specification
+
 - [ ] Add script to `package.json`:
+
   ```json
   {
     "scripts": {
@@ -650,6 +689,7 @@ Coverage improvement: 24% → 30%+
   ```
 
 - [ ] Create `scripts/generate-openapi.ts`:
+
   ```typescript
   import { writeFileSync } from 'fs';
   import { app } from '../src/server.js';
@@ -657,11 +697,7 @@ Coverage improvement: 24% → 30%+
   async function generateOpenAPI() {
     await app.ready();
     const spec = app.swagger();
-    writeFileSync(
-      'openapi.json',
-      JSON.stringify(spec, null, 2),
-      'utf-8'
-    );
+    writeFileSync('openapi.json', JSON.stringify(spec, null, 2), 'utf-8');
     console.log('OpenAPI spec generated: openapi.json');
     process.exit(0);
   }
@@ -670,6 +706,7 @@ Coverage improvement: 24% → 30%+
   ```
 
 ### Step 8: Documentation
+
 - [ ] Create `docs/API.md` with:
   - API overview
   - Authentication
@@ -745,7 +782,9 @@ Swagger UI available at /api/docs
 ### Step 1: Enhanced Error Type System
 
 #### Update `src/utils/error-types.ts`
+
 - [ ] Add error code enumeration:
+
   ```typescript
   export enum ErrorCode {
     // System Errors (1000-1999)
@@ -782,10 +821,10 @@ Swagger UI available at /api/docs
   }
 
   export enum ErrorSeverity {
-    CRITICAL = 'critical',  // System down, data loss risk
-    HIGH = 'high',          // Major functionality broken
-    MEDIUM = 'medium',      // Feature degraded
-    LOW = 'low',            // Minor issue
+    CRITICAL = 'critical', // System down, data loss risk
+    HIGH = 'high', // Major functionality broken
+    MEDIUM = 'medium', // Feature degraded
+    LOW = 'low', // Minor issue
   }
 
   export interface ErrorMetadata {
@@ -799,6 +838,7 @@ Swagger UI available at /api/docs
   ```
 
 - [ ] Update existing error classes to include metadata:
+
   ```typescript
   export class AppError extends Error {
     public readonly code: ErrorCode;
@@ -809,11 +849,7 @@ Swagger UI available at /api/docs
     public readonly context?: Record<string, unknown>;
     public readonly statusCode: number;
 
-    constructor(
-      message: string,
-      metadata: ErrorMetadata,
-      statusCode = 500
-    ) {
+    constructor(message: string, metadata: ErrorMetadata, statusCode = 500) {
       super(message);
       this.name = this.constructor.name;
       this.code = metadata.code;
@@ -829,28 +865,41 @@ Swagger UI available at /api/docs
   ```
 
 - [ ] Create specific error classes:
+
   ```typescript
   export class TrueNASError extends AppError {
     constructor(message: string, code: ErrorCode, context?: Record<string, unknown>) {
-      super(message, {
-        code,
-        severity: ErrorSeverity.HIGH,
-        recoverable: true,
-        recoverySuggestion: 'Check TrueNAS API connection and credentials',
-        context,
-      }, 503);
+      super(
+        message,
+        {
+          code,
+          severity: ErrorSeverity.HIGH,
+          recoverable: true,
+          recoverySuggestion: 'Check TrueNAS API connection and credentials',
+          context,
+        },
+        503,
+      );
     }
   }
 
-  export class PortainerError extends AppError { /* ... */ }
-  export class ZFSError extends AppError { /* ... */ }
-  export class ValidationError extends AppError { /* ... */ }
+  export class PortainerError extends AppError {
+    /* ... */
+  }
+  export class ZFSError extends AppError {
+    /* ... */
+  }
+  export class ValidationError extends AppError {
+    /* ... */
+  }
   ```
 
 ### Step 2: Create Error Response Transformer
 
 #### Create `src/middleware/error-transformer.ts`
+
 - [ ] Implement error transformation middleware:
+
   ```typescript
   import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
   import { AppError, ErrorCode, ErrorSeverity } from '../utils/error-types.js';
@@ -874,7 +923,7 @@ Swagger UI available at /api/docs
   export function errorTransformer(
     error: Error | FastifyError | AppError,
     request: FastifyRequest,
-    reply: FastifyReply
+    reply: FastifyReply,
   ): StandardErrorResponse {
     const isDevelopment = process.env.NODE_ENV === 'development';
     const correlationId = request.id || generateCorrelationId();
@@ -956,7 +1005,9 @@ Swagger UI available at /api/docs
 ### Step 3: Update Error Handler Middleware
 
 #### Update `src/middleware/error-handler.ts`
+
 - [ ] Integrate error transformer:
+
   ```typescript
   import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
   import { errorTransformer } from './error-transformer.js';
@@ -964,7 +1015,7 @@ Swagger UI available at /api/docs
   export function errorHandler(
     error: FastifyError,
     request: FastifyRequest,
-    reply: FastifyReply
+    reply: FastifyReply,
   ): void {
     const errorResponse = errorTransformer(error, request, reply);
     reply.send(errorResponse);
@@ -974,15 +1025,15 @@ Swagger UI available at /api/docs
 ### Step 4: Create Result Type for Error Handling
 
 #### Create `src/utils/result.ts`
+
 - [ ] Implement Result pattern for safe error handling:
+
   ```typescript
   /**
    * Result type for safe error handling without exceptions
    * Inspired by Rust's Result<T, E>
    */
-  export type Result<T, E = Error> =
-    | { ok: true; value: T }
-    | { ok: false; error: E };
+  export type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
 
   export const ok = <T>(value: T): Result<T, never> => ({
     ok: true,
@@ -1014,20 +1065,14 @@ Swagger UI available at /api/docs
   /**
    * Map result value if ok
    */
-  export function map<T, U, E>(
-    result: Result<T, E>,
-    fn: (value: T) => U
-  ): Result<U, E> {
+  export function map<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E> {
     return result.ok ? ok(fn(result.value)) : result;
   }
 
   /**
    * Map error value if error
    */
-  export function mapErr<T, E, F>(
-    result: Result<T, E>,
-    fn: (error: E) => F
-  ): Result<T, F> {
+  export function mapErr<T, E, F>(result: Result<T, E>, fn: (error: E) => F): Result<T, F> {
     return result.ok ? result : err(fn(result.error));
   }
 
@@ -1039,9 +1084,7 @@ Swagger UI available at /api/docs
   /**
    * Wrap async function to return Result
    */
-  export async function wrapAsync<T, E = Error>(
-    fn: () => Promise<T>
-  ): AsyncResult<T, E> {
+  export async function wrapAsync<T, E = Error>(fn: () => Promise<T>): AsyncResult<T, E> {
     try {
       const value = await fn();
       return ok(value);
@@ -1054,25 +1097,27 @@ Swagger UI available at /api/docs
 ### Step 5: Update Services to Use New Error System
 
 #### Update integration clients:
+
 - [ ] Update `src/integrations/truenas/client.ts` to throw `TrueNASError`
 - [ ] Update `src/integrations/portainer/client.ts` to throw `PortainerError`
 
 #### Example:
+
 ```typescript
 // Before:
 throw new Error('Failed to connect to TrueNAS');
 
 // After:
-throw new TrueNASError(
-  'Failed to connect to TrueNAS API',
-  ErrorCode.TRUENAS_CONNECTION_FAILED,
-  { host: this.config.host, timeout: this.config.timeout }
-);
+throw new TrueNASError('Failed to connect to TrueNAS API', ErrorCode.TRUENAS_CONNECTION_FAILED, {
+  host: this.config.host,
+  timeout: this.config.timeout,
+});
 ```
 
 ### Step 6: Create Error Documentation
 
 #### Create `docs/ERROR_CODES.md`
+
 - [ ] Document all error codes
 - [ ] Include recovery suggestions
 - [ ] Add troubleshooting guide
@@ -1080,6 +1125,7 @@ throw new TrueNASError(
 ### Step 7: Add Error Monitoring
 
 #### Create `src/utils/error-metrics.ts`
+
 - [ ] Track error counts by code
 - [ ] Track error counts by severity
 - [ ] Export metrics for Prometheus

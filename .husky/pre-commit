@@ -5,7 +5,7 @@
 node scripts/check-file-sizes.js --mode=warning
 
 # Run lint-staged
-npx lint-staged
+pnpm exec lint-staged
 
 # Type check
-npm run type-check
+pnpm run type-check

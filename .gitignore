@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 .bun/
+package-lock.json
 
 # Environment
 .env

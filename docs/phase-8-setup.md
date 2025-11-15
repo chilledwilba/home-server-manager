@@ -48,6 +48,7 @@ REQUIRE_CONFIRMATION=true
 ```
 
 **Getting your Portainer API Token:**
+
 1. Log into Portainer
 2. Navigate to User Settings > Access tokens
 3. Click "Add access token"
@@ -94,6 +95,7 @@ curl -X POST http://localhost:3100/api/infrastructure/deploy \
 ```
 
 Or manually via Portainer:
+
 1. Upload `infrastructure-templates/cloudflare-tunnel.yml`
 2. Set environment variables
 3. Deploy stack
@@ -101,6 +103,7 @@ Or manually via Portainer:
 ### 2.4 Configure Public Hostnames
 
 Back in Cloudflare Dashboard:
+
 1. Go to your tunnel
 2. Click "Public Hostname" tab
 3. Add hostnames for your services:
@@ -278,6 +281,7 @@ curl http://localhost:3100/api/security/status \
 ```
 
 Expected response:
+
 ```json
 {
   "success": true,
@@ -302,18 +306,21 @@ Expected response:
 ### 7.2 Check Individual Components
 
 **Cloudflare Tunnel:**
+
 ```bash
 curl http://localhost:3100/api/security/tunnel/status \
   -H "X-API-Token: your_api_token"
 ```
 
 **Authentik:**
+
 ```bash
 curl http://localhost:3100/api/security/auth/status \
   -H "X-API-Token: your_api_token"
 ```
 
 **Fail2ban:**
+
 ```bash
 curl http://localhost:3100/api/security/fail2ban/status \
   -H "X-API-Token: your_api_token"
@@ -331,6 +338,7 @@ curl http://localhost:3100/api/infrastructure/analyze \
 ### 8.1 Test Fail2ban Ban/Unban
 
 Ban an IP:
+
 ```bash
 curl -X POST http://localhost:3100/api/security/fail2ban/ban \
   -H "Content-Type: application/json" \
@@ -342,12 +350,14 @@ curl -X POST http://localhost:3100/api/security/fail2ban/ban \
 ```
 
 Check banned IPs:
+
 ```bash
 curl http://localhost:3100/api/security/fail2ban/banned \
   -H "X-API-Token: your_api_token"
 ```
 
 Unban an IP:
+
 ```bash
 curl -X POST http://localhost:3100/api/security/fail2ban/unban \
   -H "Content-Type: application/json" \
@@ -361,11 +371,12 @@ curl -X POST http://localhost:3100/api/security/fail2ban/unban \
 ### 8.2 Test Authentik Authentication
 
 Verify a JWT token:
+
 ```javascript
 const response = await fetch('http://localhost:3100/api/auth/verify', {
   headers: {
-    'Authorization': 'Bearer your_jwt_token'
-  }
+    Authorization: 'Bearer your_jwt_token',
+  },
 });
 ```
 
@@ -377,7 +388,7 @@ Use dotenvx for encrypted secrets:
 
 ```bash
 # Encrypt .env file
-npm run env:encrypt
+pnpm run env:encrypt
 
 # Commit .env.vault (encrypted) instead of .env
 git add .env.vault
@@ -409,6 +420,7 @@ Configure alerts for security events:
 ### 9.4 Backup Security Configurations
 
 Regular backups of:
+
 - Authentik database (PostgreSQL)
 - Cloudflare Tunnel configurations
 - Fail2ban jail configurations

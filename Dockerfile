@@ -1,34 +1,44 @@
 # Multi-stage build for Home Server Monitor
 FROM node:20-alpine AS builder
 
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
+
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY client/package.json ./client/
 COPY tsconfig.json ./
 COPY tsconfig.build.json ./
 
 # Install dependencies
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY src ./src
+COPY client/src ./client/src
 
 # Build TypeScript
-RUN npm run build
+RUN pnpm run build
+RUN pnpm --filter home-server-monitor-ui build
 
 # Production stage
 FROM node:20-alpine
 
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
+
 WORKDIR /app
 
 # Install production dependencies only
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY client/package.json ./client/
+RUN pnpm install --prod --frozen-lockfile && pnpm store prune
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/client/dist ./dist/client
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data

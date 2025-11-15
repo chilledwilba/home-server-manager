@@ -46,10 +46,10 @@ git clone https://github.com/yourusername/home-server-manager.git
 cd home-server-manager
 
 # Install dependencies
-npm install
+pnpm install
 
 # Build application
-npm run build
+pnpm run build
 ```
 
 ### 2. Environment Configuration
@@ -99,10 +99,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ```bash
 # Run database migrations
-npm run db:migrate
+pnpm run db:migrate
 
 # Verify migration
-npm run db:migrate
+pnpm run db:migrate
 ```
 
 ---
@@ -139,7 +139,7 @@ fastify.delete('/api/docker/containers/:id', {
 Install and configure rate limiting:
 
 ```bash
-npm install @fastify/rate-limit
+pnpm add @fastify/rate-limit
 ```
 
 ```typescript
@@ -598,7 +598,7 @@ journalctl -u home-server-monitor -f | grep truenas
 
 ```bash
 # Enable debug logging
-LOG_LEVEL=debug npm start
+LOG_LEVEL=debug pnpm start
 
 # Or via environment
 export LOG_LEVEL=debug
@@ -640,21 +640,25 @@ node --prof-process isolate-*.log > profile.txt
 ### Regular Tasks
 
 **Daily**
+
 - Review error logs
 - Check disk space
 - Verify backups
 
 **Weekly**
+
 - Review Prometheus alerts
 - Check SSL certificate expiry
 - Update dependencies (if needed)
 
 **Monthly**
+
 - Review and rotate API keys
 - Database optimization (VACUUM, ANALYZE)
 - Performance review
 
 **Quarterly**
+
 - Security audit
 - Dependency updates
 - Documentation updates
