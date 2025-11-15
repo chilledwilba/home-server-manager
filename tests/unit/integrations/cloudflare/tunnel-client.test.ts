@@ -1,31 +1,16 @@
-/* eslint-disable no-undef, @typescript-eslint/no-explicit-any */
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-
-// Mock the logger
-jest.mock('../../../../src/utils/logger.js', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  },
-}));
-
-// Mock fetch
-global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+/* eslint-disable @typescript-eslint/no-explicit-any, no-undef */
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { CloudflareTunnelClient } from '../../../../src/integrations/cloudflare/tunnel-client.js';
 
 describe('CloudflareTunnelClient', () => {
-  let CloudflareTunnelClient: typeof import('../../../../src/integrations/cloudflare/tunnel-client.js').CloudflareTunnelClient;
-  let client: InstanceType<
-    typeof import('../../../../src/integrations/cloudflare/tunnel-client.js').CloudflareTunnelClient
-  >;
+  let client: CloudflareTunnelClient;
+  let originalFetch: typeof global.fetch;
 
-  beforeEach(async () => {
-    jest.clearAllMocks();
+  beforeEach(() => {
+    // Save original fetch
+    originalFetch = global.fetch;
 
-    // Import the class after mocks are set up
-    const module = await import('../../../../src/integrations/cloudflare/tunnel-client.js');
-    CloudflareTunnelClient = module.CloudflareTunnelClient;
-
+    // Create client instance
     client = new CloudflareTunnelClient({
       accountId: 'test-account-id',
       apiToken: 'test-api-token',
@@ -33,32 +18,51 @@ describe('CloudflareTunnelClient', () => {
     });
   });
 
-  describe('Constructor', () => {
-    it('should initialize with correct configuration', () => {
-      expect((client as any).config.accountId).toBe('test-account-id');
-      expect((client as any).config.apiToken).toBe('test-api-token');
-      expect((client as any).tunnelId).toBe('test-tunnel-id');
-    });
+  afterEach(() => {
+    // Restore original fetch
+    global.fetch = originalFetch;
+    jest.restoreAllMocks();
+  });
 
-    it('should work without tunnel ID', () => {
-      const noTunnelClient = new CloudflareTunnelClient({
-        accountId: 'test-account',
-        apiToken: 'test-token',
+  describe('Constructor', () => {
+    it('should initialize with tunnel ID', () => {
+      const testClient = new CloudflareTunnelClient({
+        accountId: 'acc-123',
+        apiToken: 'token-456',
+        tunnelId: 'tunnel-789',
       });
 
-      expect((noTunnelClient as any).tunnelId).toBeUndefined();
+      expect((testClient as any).tunnelId).toBe('tunnel-789');
+      expect((testClient as any).config.accountId).toBe('acc-123');
+      expect((testClient as any).config.apiToken).toBe('token-456');
+    });
+
+    it('should initialize without tunnel ID', () => {
+      const testClient = new CloudflareTunnelClient({
+        accountId: 'acc-123',
+        apiToken: 'token-456',
+      });
+
+      expect((testClient as any).tunnelId).toBeUndefined();
     });
   });
 
-  describe('List Tunnels', () => {
-    it('should list all tunnels for account', async () => {
+  describe('listTunnels', () => {
+    it('should list all tunnels', async () => {
       const mockTunnels = [
         {
           id: 'tunnel-1',
           name: 'home-tunnel',
           status: 'active',
           created_at: '2024-01-01T00:00:00Z',
-          connections: [],
+          connections: [
+            {
+              id: 'conn-1',
+              client_id: 'client-1',
+              opened_at: '2024-01-01T01:00:00Z',
+              origin_ip: '192.168.1.100',
+            },
+          ],
         },
         {
           id: 'tunnel-2',
@@ -69,47 +73,49 @@ describe('CloudflareTunnelClient', () => {
         },
       ];
 
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
         ok: true,
         json: async () => ({ result: mockTunnels }),
-      } as Response);
+      } as Response) as any;
 
       const tunnels = await client.listTunnels();
 
-      expect(tunnels).toEqual(mockTunnels);
-      expect(tunnels.length).toBe(2);
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/accounts/test-account-id/cfd_tunnel'),
-        expect.objectContaining({
-          headers: expect.objectContaining({
+        'https://api.cloudflare.com/client/v4/accounts/test-account-id/cfd_tunnel',
+        {
+          headers: {
             Authorization: 'Bearer test-api-token',
-          }),
-        }),
+            'Content-Type': 'application/json',
+          },
+        },
       );
+
+      expect(tunnels).toEqual(mockTunnels);
+      expect(tunnels).toHaveLength(2);
     });
 
     it('should throw error when API request fails', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
         ok: false,
         statusText: 'Unauthorized',
-      } as Response);
+      } as Response) as any;
 
-      await expect(client.listTunnels()).rejects.toThrow('Failed to list tunnels');
+      await expect(client.listTunnels()).rejects.toThrow('Failed to list tunnels: Unauthorized');
     });
 
-    it('should handle network errors', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockRejectedValueOnce(
-        new Error('Network error'),
-      );
+    it('should throw error on network failure', async () => {
+      global.fetch = jest
+        .fn<typeof fetch>()
+        .mockRejectedValueOnce(new Error('Network error')) as any;
 
       await expect(client.listTunnels()).rejects.toThrow('Network error');
     });
   });
 
-  describe('Get Tunnel', () => {
-    it('should get tunnel by ID', async () => {
+  describe('getTunnel', () => {
+    it('should get tunnel details using constructor tunnel ID', async () => {
       const mockTunnel = {
-        id: 'tunnel-1',
+        id: 'test-tunnel-id',
         name: 'home-tunnel',
         status: 'active',
         created_at: '2024-01-01T00:00:00Z',
@@ -117,253 +123,314 @@ describe('CloudflareTunnelClient', () => {
           {
             id: 'conn-1',
             client_id: 'client-1',
-            opened_at: '2024-01-01T10:00:00Z',
+            opened_at: '2024-01-01T01:00:00Z',
             origin_ip: '192.168.1.100',
           },
         ],
       };
 
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
         ok: true,
         json: async () => ({ result: mockTunnel }),
-      } as Response);
+      } as Response) as any;
 
-      const tunnel = await client.getTunnel('tunnel-1');
+      const tunnel = await client.getTunnel();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.cloudflare.com/client/v4/accounts/test-account-id/cfd_tunnel/test-tunnel-id',
+        {
+          headers: {
+            Authorization: 'Bearer test-api-token',
+            'Content-Type': 'application/json',
+          },
+        },
+      );
 
       expect(tunnel).toEqual(mockTunnel);
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/cfd_tunnel/tunnel-1'),
-        expect.any(Object),
-      );
     });
 
-    it('should use default tunnel ID from constructor', async () => {
+    it('should get tunnel details using provided tunnel ID', async () => {
       const mockTunnel = {
-        id: 'test-tunnel-id',
-        name: 'default-tunnel',
+        id: 'custom-tunnel-id',
+        name: 'custom-tunnel',
         status: 'active',
         created_at: '2024-01-01T00:00:00Z',
         connections: [],
       };
 
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
         ok: true,
         json: async () => ({ result: mockTunnel }),
-      } as Response);
+      } as Response) as any;
 
-      const tunnel = await client.getTunnel();
+      const tunnel = await client.getTunnel('custom-tunnel-id');
 
-      expect(tunnel.id).toBe('test-tunnel-id');
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/cfd_tunnel/test-tunnel-id'),
+        'https://api.cloudflare.com/client/v4/accounts/test-account-id/cfd_tunnel/custom-tunnel-id',
         expect.any(Object),
       );
+
+      expect(tunnel).toEqual(mockTunnel);
     });
 
     it('should throw error when no tunnel ID provided', async () => {
-      const noIdClient = new CloudflareTunnelClient({
-        accountId: 'test-account',
-        apiToken: 'test-token',
+      const clientWithoutId = new CloudflareTunnelClient({
+        accountId: 'test-account-id',
+        apiToken: 'test-api-token',
       });
 
-      await expect(noIdClient.getTunnel()).rejects.toThrow('No tunnel ID provided');
+      await expect(clientWithoutId.getTunnel()).rejects.toThrow('No tunnel ID provided');
     });
 
-    it('should throw error when tunnel not found', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+    it('should throw error when API request fails', async () => {
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
         ok: false,
         statusText: 'Not Found',
-      } as Response);
+      } as Response) as any;
 
-      await expect(client.getTunnel('nonexistent')).rejects.toThrow('Failed to get tunnel');
+      await expect(client.getTunnel()).rejects.toThrow('Failed to get tunnel: Not Found');
     });
   });
 
-  describe('Get Tunnel Connections', () => {
+  describe('getTunnelConnections', () => {
     it('should get tunnel connections', async () => {
       const mockConnections = [
         {
           id: 'conn-1',
           client_id: 'client-1',
-          opened_at: '2024-01-01T10:00:00Z',
+          opened_at: '2024-01-01T01:00:00Z',
           origin_ip: '192.168.1.100',
         },
         {
           id: 'conn-2',
           client_id: 'client-2',
-          opened_at: '2024-01-01T11:00:00Z',
+          opened_at: '2024-01-01T02:00:00Z',
           origin_ip: '192.168.1.101',
         },
       ];
 
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          result: {
-            id: 'tunnel-1',
-            name: 'test',
-            status: 'active',
-            created_at: '2024-01-01',
-            connections: mockConnections,
-          },
-        }),
-      } as Response);
+      const mockTunnel = {
+        id: 'test-tunnel-id',
+        name: 'home-tunnel',
+        status: 'active',
+        created_at: '2024-01-01T00:00:00Z',
+        connections: mockConnections,
+      };
 
-      const connections = await client.getTunnelConnections('tunnel-1');
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: mockTunnel }),
+      } as Response) as any;
+
+      const connections = await client.getTunnelConnections();
 
       expect(connections).toEqual(mockConnections);
-      expect(connections.length).toBe(2);
+      expect(connections).toHaveLength(2);
     });
 
-    it('should return empty array when no connections', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          result: {
-            id: 'tunnel-1',
-            name: 'test',
-            status: 'inactive',
-            created_at: '2024-01-01',
-            connections: [],
-          },
-        }),
-      } as Response);
+    it('should return empty array when tunnel has no connections', async () => {
+      const mockTunnel = {
+        id: 'test-tunnel-id',
+        name: 'home-tunnel',
+        status: 'inactive',
+        created_at: '2024-01-01T00:00:00Z',
+        connections: [],
+      };
 
-      const connections = await client.getTunnelConnections('tunnel-1');
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: mockTunnel }),
+      } as Response) as any;
+
+      const connections = await client.getTunnelConnections();
 
       expect(connections).toEqual([]);
     });
+
+    it('should throw error when no tunnel ID provided', async () => {
+      const clientWithoutId = new CloudflareTunnelClient({
+        accountId: 'test-account-id',
+        apiToken: 'test-api-token',
+      });
+
+      await expect(clientWithoutId.getTunnelConnections()).rejects.toThrow('No tunnel ID provided');
+    });
+
+    it('should throw error on API failure', async () => {
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
+        ok: false,
+        statusText: 'Internal Server Error',
+      } as Response) as any;
+
+      await expect(client.getTunnelConnections()).rejects.toThrow();
+    });
   });
 
-  describe('Health Check', () => {
-    it('should return true for active tunnel with connections', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          result: {
-            id: 'tunnel-1',
-            name: 'test',
-            status: 'active',
-            created_at: '2024-01-01',
-            connections: [{ id: 'conn-1' }],
+  describe('isHealthy', () => {
+    it('should return true when tunnel is active with connections', async () => {
+      const mockTunnel = {
+        id: 'test-tunnel-id',
+        name: 'home-tunnel',
+        status: 'active',
+        created_at: '2024-01-01T00:00:00Z',
+        connections: [
+          {
+            id: 'conn-1',
+            client_id: 'client-1',
+            opened_at: '2024-01-01T01:00:00Z',
+            origin_ip: '192.168.1.100',
           },
-        }),
-      } as Response);
+        ],
+      };
 
-      const healthy = await client.isHealthy('tunnel-1');
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: mockTunnel }),
+      } as Response) as any;
+
+      const healthy = await client.isHealthy();
 
       expect(healthy).toBe(true);
     });
 
-    it('should return false for active tunnel without connections', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          result: {
-            id: 'tunnel-1',
-            name: 'test',
-            status: 'active',
-            created_at: '2024-01-01',
-            connections: [],
+    it('should return false when tunnel status is not active', async () => {
+      const mockTunnel = {
+        id: 'test-tunnel-id',
+        name: 'home-tunnel',
+        status: 'inactive',
+        created_at: '2024-01-01T00:00:00Z',
+        connections: [
+          {
+            id: 'conn-1',
+            client_id: 'client-1',
+            opened_at: '2024-01-01T01:00:00Z',
+            origin_ip: '192.168.1.100',
           },
-        }),
-      } as Response);
+        ],
+      };
 
-      const healthy = await client.isHealthy('tunnel-1');
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: mockTunnel }),
+      } as Response) as any;
+
+      const healthy = await client.isHealthy();
 
       expect(healthy).toBe(false);
     });
 
-    it('should return false for inactive tunnel', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          result: {
-            id: 'tunnel-1',
-            name: 'test',
-            status: 'inactive',
-            created_at: '2024-01-01',
-            connections: [{ id: 'conn-1' }],
-          },
-        }),
-      } as Response);
+    it('should return false when tunnel has no connections', async () => {
+      const mockTunnel = {
+        id: 'test-tunnel-id',
+        name: 'home-tunnel',
+        status: 'active',
+        created_at: '2024-01-01T00:00:00Z',
+        connections: [],
+      };
 
-      const healthy = await client.isHealthy('tunnel-1');
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ result: mockTunnel }),
+      } as Response) as any;
+
+      const healthy = await client.isHealthy();
 
       expect(healthy).toBe(false);
     });
 
-    it('should return false when tunnel fetch fails', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockRejectedValueOnce(
-        new Error('Network error'),
-      );
+    it('should return false on API error', async () => {
+      global.fetch = jest.fn<typeof fetch>().mockRejectedValueOnce(new Error('API Error')) as any;
 
-      const healthy = await client.isHealthy('tunnel-1');
+      const healthy = await client.isHealthy();
 
       expect(healthy).toBe(false);
     });
   });
 
-  describe('Delete Tunnel', () => {
-    it('should delete tunnel successfully', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+  describe('deleteTunnel', () => {
+    it('should delete tunnel using constructor tunnel ID', async () => {
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
         ok: true,
-      } as Response);
+      } as Response) as any;
 
-      await expect(client.deleteTunnel('tunnel-1')).resolves.toBeUndefined();
+      await client.deleteTunnel();
 
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/cfd_tunnel/tunnel-1'),
-        expect.objectContaining({
+        'https://api.cloudflare.com/client/v4/accounts/test-account-id/cfd_tunnel/test-tunnel-id',
+        {
           method: 'DELETE',
-        }),
+          headers: {
+            Authorization: 'Bearer test-api-token',
+            'Content-Type': 'application/json',
+          },
+        },
       );
     });
 
-    it('should use default tunnel ID', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+    it('should delete tunnel using provided tunnel ID', async () => {
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
         ok: true,
-      } as Response);
+      } as Response) as any;
 
-      await expect(client.deleteTunnel()).resolves.toBeUndefined();
+      await client.deleteTunnel('custom-tunnel-id');
 
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/cfd_tunnel/test-tunnel-id'),
-        expect.any(Object),
+        'https://api.cloudflare.com/client/v4/accounts/test-account-id/cfd_tunnel/custom-tunnel-id',
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: 'Bearer test-api-token',
+            'Content-Type': 'application/json',
+          },
+        },
       );
     });
 
     it('should throw error when no tunnel ID provided', async () => {
-      const noIdClient = new CloudflareTunnelClient({
-        accountId: 'test-account',
-        apiToken: 'test-token',
+      const clientWithoutId = new CloudflareTunnelClient({
+        accountId: 'test-account-id',
+        apiToken: 'test-api-token',
       });
 
-      await expect(noIdClient.deleteTunnel()).rejects.toThrow('No tunnel ID provided');
+      await expect(clientWithoutId.deleteTunnel()).rejects.toThrow('No tunnel ID provided');
     });
 
-    it('should throw error when deletion fails', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+    it('should throw error when delete fails', async () => {
+      global.fetch = jest.fn<typeof fetch>().mockResolvedValueOnce({
         ok: false,
         statusText: 'Forbidden',
-      } as Response);
+      } as Response) as any;
 
-      await expect(client.deleteTunnel('tunnel-1')).rejects.toThrow('Failed to delete tunnel');
+      await expect(client.deleteTunnel()).rejects.toThrow('Failed to delete tunnel: Forbidden');
     });
   });
 
-  describe('Get Metrics', () => {
+  describe('getMetrics', () => {
     it('should return metrics for healthy tunnel', async () => {
-      // getMetrics calls getTunnel twice (once directly, once via isHealthy)
       const mockTunnel = {
-        id: 'tunnel-1',
-        name: 'test',
+        id: 'test-tunnel-id',
+        name: 'home-tunnel',
         status: 'active',
-        created_at: '2024-01-01',
-        connections: [{ id: 'conn-1' }, { id: 'conn-2' }],
+        created_at: '2024-01-01T00:00:00Z',
+        connections: [
+          {
+            id: 'conn-1',
+            client_id: 'client-1',
+            opened_at: '2024-01-01T01:00:00Z',
+            origin_ip: '192.168.1.100',
+          },
+          {
+            id: 'conn-2',
+            client_id: 'client-2',
+            opened_at: '2024-01-01T02:00:00Z',
+            origin_ip: '192.168.1.101',
+          },
+        ],
       };
 
-      (global.fetch as jest.MockedFunction<typeof fetch>)
+      // Mock getTunnel and isHealthy calls
+      global.fetch = jest
+        .fn<typeof fetch>()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ result: mockTunnel }),
@@ -371,9 +438,9 @@ describe('CloudflareTunnelClient', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ result: mockTunnel }),
-        } as Response);
+        } as Response) as any;
 
-      const metrics = await client.getMetrics('tunnel-1');
+      const metrics = await client.getMetrics();
 
       expect(metrics).toEqual({
         active_connections: 2,
@@ -382,35 +449,10 @@ describe('CloudflareTunnelClient', () => {
       });
     });
 
-    it('should return unhealthy metrics when tunnel has no connections', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          result: {
-            id: 'tunnel-1',
-            name: 'test',
-            status: 'active',
-            created_at: '2024-01-01',
-            connections: [],
-          },
-        }),
-      } as Response);
-
-      const metrics = await client.getMetrics('tunnel-1');
-
-      expect(metrics).toEqual({
-        active_connections: 0,
-        status: 'active',
-        healthy: false,
-      });
-    });
-
     it('should return default metrics on error', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockRejectedValueOnce(
-        new Error('Network error'),
-      );
+      global.fetch = jest.fn<typeof fetch>().mockRejectedValueOnce(new Error('API Error')) as any;
 
-      const metrics = await client.getMetrics('tunnel-1');
+      const metrics = await client.getMetrics();
 
       expect(metrics).toEqual({
         active_connections: 0,
@@ -419,16 +461,17 @@ describe('CloudflareTunnelClient', () => {
       });
     });
 
-    it('should use default tunnel ID when not provided', async () => {
+    it('should handle tunnel with no connections', async () => {
       const mockTunnel = {
         id: 'test-tunnel-id',
-        name: 'test',
-        status: 'active',
-        created_at: '2024-01-01',
-        connections: [{ id: 'conn-1' }],
+        name: 'home-tunnel',
+        status: 'inactive',
+        created_at: '2024-01-01T00:00:00Z',
+        connections: [],
       };
 
-      (global.fetch as jest.MockedFunction<typeof fetch>)
+      global.fetch = jest
+        .fn<typeof fetch>()
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ result: mockTunnel }),
@@ -436,11 +479,13 @@ describe('CloudflareTunnelClient', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ result: mockTunnel }),
-        } as Response);
+        } as Response) as any;
 
       const metrics = await client.getMetrics();
 
-      expect(metrics.healthy).toBe(true);
+      expect(metrics.active_connections).toBe(0);
+      expect(metrics.status).toBe('inactive');
+      expect(metrics.healthy).toBe(false);
     });
   });
 });
