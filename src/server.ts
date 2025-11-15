@@ -16,6 +16,7 @@ import { registerHealthRoutes } from './core/health-routes.js';
 import { HealthMonitor } from './middleware/health-monitor.js';
 import { logger } from './utils/logger.js';
 import { swaggerConfig, swaggerUiConfig } from './config/swagger.js';
+import { addFeatureFlagSupport } from './middleware/feature-flag.js';
 
 /**
  * Build and configure the Fastify server with dependency injection
@@ -39,6 +40,9 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
 
   // Register decorators for type-safe service access
   registerServiceDecorators(fastify, db, services);
+
+  // Register feature flag support
+  addFeatureFlagSupport(fastify);
 
   // Register middleware (CORS, caching, request logging, metrics)
   await registerMiddleware(fastify);

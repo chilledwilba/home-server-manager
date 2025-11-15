@@ -15,6 +15,7 @@ import { notificationRoutes } from '../routes/notifications.js';
 import { remediationRoutes } from '../routes/remediation.js';
 import { arrRoutes } from '../routes/arr.js';
 import { infrastructureRoutes } from '../routes/infrastructure/index.js';
+import { featureFlagRoutes } from '../routes/feature-flags.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -76,6 +77,10 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
     await fastify.register(infrastructureRoutes, { manager: infrastructureManager });
     logger.info('Infrastructure routes registered');
   }
+
+  // Feature flag routes
+  await fastify.register(featureFlagRoutes);
+  logger.info('Feature flag routes registered');
 
   // UPS routes (if enabled)
   await registerUPSRoutes(fastify);

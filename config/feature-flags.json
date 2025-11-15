@@ -1,0 +1,44 @@
+{
+  "flags": {
+    "ai_insights_enabled": {
+      "enabled": true,
+      "description": "Enable AI-powered insights and analysis",
+      "environments": ["development", "production"]
+    },
+    "auto_remediation_enabled": {
+      "enabled": false,
+      "description": "Enable automatic problem remediation (requires human confirmation)",
+      "environments": ["development"]
+    },
+    "new_dashboard_ui": {
+      "enabled": false,
+      "description": "Enable new React dashboard UI",
+      "percentage": 0
+    },
+    "experimental_features": {
+      "enabled": false,
+      "description": "Enable experimental features",
+      "environments": ["development"]
+    },
+    "performance_monitoring": {
+      "enabled": true,
+      "description": "Enable detailed performance monitoring",
+      "environments": ["development", "production"]
+    },
+    "enhanced_logging": {
+      "enabled": true,
+      "description": "Enable enhanced debug logging",
+      "environments": ["development"]
+    },
+    "security_scanning": {
+      "enabled": true,
+      "description": "Enable security vulnerability scanning",
+      "environments": ["development", "production"]
+    },
+    "mcp_server": {
+      "enabled": true,
+      "description": "Enable MCP server for Claude integration",
+      "environments": ["development", "production"]
+    }
+  }
+}
