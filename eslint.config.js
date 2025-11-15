@@ -68,6 +68,15 @@ export default [
     },
   },
   {
+    // Route handlers and services often need async for interface consistency
+    files: ['src/routes/**/*.ts', 'src/services/**/*.ts', 'src/mcp/server.ts'],
+    rules: {
+      // These are often intentionally async for Fastify/service interface consistency
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-misused-promises': 'warn',
+    },
+  },
+  {
     files: ['tests/**/*.ts'],
     languageOptions: {
       parser: typescriptParser,

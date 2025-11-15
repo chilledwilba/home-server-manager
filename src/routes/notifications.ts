@@ -6,7 +6,7 @@ import { ExternalServiceError } from '../utils/error-types.js';
 /**
  * Notification routes
  */
-// eslint-disable-next-line @typescript-eslint/require-await
+
 export async function notificationRoutes(fastify: FastifyInstance): Promise<void> {
   /**
    * GET /api/notifications/history

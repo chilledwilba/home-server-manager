@@ -39,7 +39,7 @@ const DiagnoseIssueSchema = z.object({
  * ZFS Routes
  * API endpoints for snapshot management, scrub history, and ZFS assistance
  */
-// eslint-disable-next-line @typescript-eslint/require-await
+
 export async function zfsRoutes(fastify: FastifyInstance): Promise<void> {
   /**
    * GET /api/zfs/snapshots/stats

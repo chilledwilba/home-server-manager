@@ -3,7 +3,6 @@ import type { DockerMonitor } from '../services/monitoring/docker-monitor.js';
 import { formatSuccess, extractParams } from '../utils/route-helpers.js';
 import { ExternalServiceError, NotFoundError } from '../utils/error-types.js';
 
-// eslint-disable-next-line @typescript-eslint/require-await
 export async function dockerRoutes(
   fastify: FastifyInstance,
   options: {

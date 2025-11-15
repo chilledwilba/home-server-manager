@@ -7,7 +7,6 @@ import { formatSuccess, extractParams } from '../utils/route-helpers.js';
 
 const logger = createLogger('monitoring-routes');
 
-// eslint-disable-next-line @typescript-eslint/require-await
 export async function monitoringRoutes(
   fastify: FastifyInstance,
   options: {

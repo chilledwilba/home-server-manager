@@ -10,7 +10,7 @@ import { registerManagementRoutes } from './management.js';
  * Combines analysis, service, deployment, and management routes
  * Split from monolithic infrastructure.ts (322 lines) for better maintainability
  */
-// eslint-disable-next-line @typescript-eslint/require-await
+
 export async function infrastructureRoutes(
   fastify: FastifyInstance,
   options: {
