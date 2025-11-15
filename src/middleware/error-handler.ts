@@ -25,11 +25,11 @@ export interface ErrorResponse {
  * Fastify error handler
  * Catches all errors thrown in routes and formats them consistently
  */
-export async function errorHandler(
+export function errorHandler(
   error: FastifyError | Error,
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> {
+): void {
   const requestId = request.id;
   const timestamp = new Date().toISOString();
 

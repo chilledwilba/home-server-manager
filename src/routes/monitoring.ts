@@ -21,7 +21,7 @@ export async function monitoringRoutes(
    * GET /alerts
    * Get recent alerts from the monitoring system
    */
-  fastify.get('/alerts', async () => {
+  fastify.get('/alerts', () => {
     try {
       const alerts = monitor.getRecentAlerts(100);
       return formatSuccess(alerts);
@@ -36,7 +36,7 @@ export async function monitoringRoutes(
    * GET /predictions
    * Get latest disk failure predictions
    */
-  fastify.get('/predictions', async () => {
+  fastify.get('/predictions', () => {
     try {
       const predictions = predictor.getLatestPredictions();
       return formatSuccess(predictions);
@@ -53,7 +53,7 @@ export async function monitoringRoutes(
    */
   fastify.post<{
     Params: { id: string };
-  }>('/alerts/:id/acknowledge', async (request) => {
+  }>('/alerts/:id/acknowledge', (request) => {
     try {
       const { id } = extractParams<{ id: string }>(request.params);
       // Implementation would update the alert in database

@@ -49,16 +49,16 @@ export class ServiceContainer {
 
     try {
       // Phase 1: Initialize integration clients (no dependencies)
-      await this.initializeClients();
+      this.initializeClients();
 
       // Phase 2: Initialize core services (depend on clients)
-      await this.initializeCoreServices();
+      this.initializeCoreServices();
 
       // Phase 3: Initialize monitoring services (depend on core services)
-      await this.initializeMonitoringServices();
+      this.initializeMonitoringServices();
 
       // Phase 4: Initialize orchestration services (depend on everything)
-      await this.initializeOrchestrationServices();
+      this.initializeOrchestrationServices();
 
       this.initialized = true;
       logger.info('Service container initialized successfully');
@@ -114,7 +114,7 @@ export class ServiceContainer {
   /**
    * Gracefully stop all services in reverse initialization order
    */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     logger.info('Shutting down service container...');
 
     // Stop services with explicit stop methods
@@ -181,7 +181,7 @@ export class ServiceContainer {
   /**
    * Initialize integration clients (Phase 1)
    */
-  private async initializeClients(): Promise<void> {
+  private initializeClients(): void {
     logger.info('Initializing integration clients...');
 
     // TrueNAS Client
@@ -279,7 +279,7 @@ export class ServiceContainer {
   /**
    * Initialize core services (Phase 2)
    */
-  private async initializeCoreServices(): Promise<void> {
+  private initializeCoreServices(): void {
     logger.info('Initializing core services...');
 
     // Disk Failure Predictor
@@ -308,7 +308,7 @@ export class ServiceContainer {
   /**
    * Initialize monitoring services (Phase 3)
    */
-  private async initializeMonitoringServices(): Promise<void> {
+  private initializeMonitoringServices(): void {
     logger.info('Initializing monitoring services...');
 
     // TrueNAS Monitor
@@ -381,7 +381,7 @@ export class ServiceContainer {
   /**
    * Initialize orchestration services (Phase 4)
    */
-  private async initializeOrchestrationServices(): Promise<void> {
+  private initializeOrchestrationServices(): void {
     logger.info('Initializing orchestration services...');
 
     // Security Scanner

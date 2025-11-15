@@ -12,13 +12,13 @@ import { formatSuccess, extractBody } from '../../utils/route-helpers.js';
  * Security scanner routes
  * Handles vulnerability scanning and findings management
  */
-export async function scannerRoutes(
+export function scannerRoutes(
   fastify: FastifyInstance,
   options: {
     scanner: SecurityScanner;
     dockerMonitor: DockerMonitor | null;
   },
-): Promise<void> {
+): void {
   const { scanner, dockerMonitor } = options;
 
   /**

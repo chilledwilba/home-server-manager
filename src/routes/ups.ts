@@ -6,13 +6,13 @@ import type { UPSMonitor } from '../services/ups/ups-monitor.js';
 /**
  * UPS monitoring and management routes
  */
-export async function upsRoutes(
+export function upsRoutes(
   fastify: FastifyInstance,
   options: {
     client: NUTClient;
     monitor?: UPSMonitor;
   },
-): Promise<void> {
+): void {
   const { client, monitor } = options;
 
   /**

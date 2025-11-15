@@ -23,11 +23,11 @@ export async function securityRoutes(
   const { scanner, dockerMonitor, orchestrator } = options;
 
   // Register scanner routes (vulnerability scanning)
-  await scannerRoutes(fastify, { scanner, dockerMonitor });
+  scannerRoutes(fastify, { scanner, dockerMonitor });
 
   // Register orchestrator routes (comprehensive security status)
-  await orchestratorRoutes(fastify, { orchestrator });
+  orchestratorRoutes(fastify, { orchestrator });
 
   // Register Fail2ban routes (IP banning/unbanning)
-  await fail2banRoutes(fastify, { orchestrator });
+  fail2banRoutes(fastify, { orchestrator });
 }

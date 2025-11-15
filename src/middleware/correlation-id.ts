@@ -9,10 +9,7 @@ const logger = createLogger('correlation-id');
  * Adds unique correlation IDs to track requests across services
  * Uses X-Correlation-ID header if provided, otherwise generates new UUID
  */
-export async function correlationIdMiddleware(
-  request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<void> {
+export function correlationIdMiddleware(request: FastifyRequest, reply: FastifyReply): void {
   // Get correlation ID from header or generate new one
   const correlationId = (request.headers['x-correlation-id'] as string) || randomUUID();
 

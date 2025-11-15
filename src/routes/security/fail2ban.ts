@@ -16,12 +16,12 @@ const logger = createLogger('security-fail2ban-routes');
  * Fail2ban action routes
  * Handles IP banning/unbanning and ban status management
  */
-export async function fail2banRoutes(
+export function fail2banRoutes(
   fastify: FastifyInstance,
   options: {
     orchestrator?: SecurityOrchestrator;
   },
-): Promise<void> {
+): void {
   const { orchestrator } = options;
 
   /**

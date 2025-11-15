@@ -23,7 +23,7 @@ interface RequestContext {
 /**
  * Add request correlation ID and logging
  */
-export async function requestLogger(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+export function requestLogger(request: FastifyRequest, reply: FastifyReply): void {
   // Generate or extract correlation ID
   const requestId = (request.headers['x-request-id'] as string) || randomUUID();
 
@@ -62,7 +62,7 @@ export async function requestLogger(request: FastifyRequest, reply: FastifyReply
 /**
  * Log response with timing
  */
-export async function responseLogger(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+export function responseLogger(request: FastifyRequest, reply: FastifyReply): void {
   const context = (request as { context?: RequestContext }).context;
 
   if (!context) {

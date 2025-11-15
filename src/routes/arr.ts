@@ -32,7 +32,7 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
     Params: { app: string };
   }>(
     '/api/arr/optimize/suggestions/:app',
-    withService<ArrOptimizer>('arrOptimizer', async (arrOptimizer, request) => {
+    withService<ArrOptimizer>('arrOptimizer', (arrOptimizer, request) => {
       try {
         const { app } = extractParams<{ app: string }>(request.params);
         const suggestions = arrOptimizer.getOptimizationSuggestions(app);
@@ -54,7 +54,7 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
     Params: { app: string };
   }>(
     '/api/arr/performance/:app',
-    withDatabase(async (db, request) => {
+    withDatabase((db, request) => {
       try {
         const { app } = extractParams<{ app: string }>(request.params);
 
@@ -84,7 +84,7 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
     Querystring: { app?: string; limit?: number };
   }>(
     '/api/arr/failed',
-    withDatabase(async (db, request) => {
+    withDatabase((db, request) => {
       try {
         const { app, limit = 20 } = extractQuery<{ app?: string; limit?: number }>(request.query);
 
@@ -116,7 +116,7 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
    */
   fastify.get(
     '/api/arr/disk-usage',
-    withDatabase(async (db) => {
+    withDatabase((db) => {
       try {
         const usage = db
           .prepare(
@@ -151,7 +151,7 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
    */
   fastify.get(
     '/api/arr/queue/analysis',
-    withDatabase(async (db) => {
+    withDatabase((db) => {
       try {
         const analysis = db
           .prepare(
@@ -188,7 +188,7 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
     Querystring: { limit?: number };
   }>(
     '/api/arr/queue/:app',
-    withDatabase(async (db, request) => {
+    withDatabase((db, request) => {
       try {
         const { app } = extractParams<{ app: string }>(request.params);
         const { limit = 50 } = extractQuery<{ limit?: number }>(request.query);
@@ -222,7 +222,7 @@ export async function arrRoutes(fastify: FastifyInstance): Promise<void> {
     Querystring: { limit?: number };
   }>(
     '/api/arr/health/:app',
-    withDatabase(async (db, request) => {
+    withDatabase((db, request) => {
       try {
         const { app } = extractParams<{ app: string }>(request.params);
         const { limit = 50 } = extractQuery<{ limit?: number }>(request.query);

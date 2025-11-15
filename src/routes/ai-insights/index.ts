@@ -15,10 +15,7 @@ const logger = createLogger('ai-insights-routes');
  * Combines insights, anomaly detection, capacity planning, analysis, and management routes
  * Split from monolithic ai-insights.ts (416 lines) for better maintainability
  */
-export async function aiInsightsRoutes(
-  fastify: FastifyInstance,
-  options: AIInsightsRouteOptions,
-): Promise<void> {
+export function aiInsightsRoutes(fastify: FastifyInstance, options: AIInsightsRouteOptions): void {
   const { db, ollamaEnabled, ollamaConfig } = options;
 
   // Initialize AI insights service

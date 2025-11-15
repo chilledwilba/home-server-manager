@@ -65,7 +65,7 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
   const shutdown = async (): Promise<void> => {
     logger.info('Shutting down gracefully...');
     healthMonitor.stop();
-    await services.shutdown();
+    services.shutdown();
     await fastify.close();
     closeDatabase();
     process.exit(0);

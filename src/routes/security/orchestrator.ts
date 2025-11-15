@@ -10,12 +10,12 @@ const logger = createLogger('security-orchestrator-routes');
  * Security orchestrator routes
  * Handles comprehensive security status from multiple services
  */
-export async function orchestratorRoutes(
+export function orchestratorRoutes(
   fastify: FastifyInstance,
   options: {
     orchestrator?: SecurityOrchestrator;
   },
-): Promise<void> {
+): void {
   const { orchestrator } = options;
 
   /**
