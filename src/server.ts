@@ -1,4 +1,6 @@
 import Fastify from 'fastify';
+import fastifySwagger from '@fastify/swagger';
+import fastifySwaggerUi from '@fastify/swagger-ui';
 import { ServiceContainer } from './core/service-container.js';
 import { registerServiceDecorators } from './core/fastify-decorators.js';
 import { createSocketIOServer } from './core/socket-io.js';
@@ -13,6 +15,7 @@ import { registerRoutes } from './core/routes-initializer.js';
 import { registerHealthRoutes } from './core/health-routes.js';
 import { HealthMonitor } from './middleware/health-monitor.js';
 import { logger } from './utils/logger.js';
+import { swaggerConfig, swaggerUiConfig } from './config/swagger.js';
 
 /**
  * Build and configure the Fastify server with dependency injection
@@ -39,6 +42,10 @@ async function buildServer(): Promise<ReturnType<typeof Fastify>> {
 
   // Register middleware (CORS, caching, request logging, metrics)
   await registerMiddleware(fastify);
+
+  // Register Swagger/OpenAPI documentation
+  await fastify.register(fastifySwagger, swaggerConfig);
+  await fastify.register(fastifySwaggerUi, swaggerUiConfig);
 
   // Register all application routes
   await registerRoutes(fastify);
