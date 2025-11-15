@@ -301,7 +301,12 @@ Benefits:
 - ✅ Created comprehensive unit tests for Security Scanner (27 test cases)
 - ✅ Created comprehensive unit tests for error-types.ts (39 tests, 100% coverage)
 - ✅ Created comprehensive unit tests for route-helpers.ts (48 tests, 67% coverage)
-- 🔄 Working toward 30% coverage target (currently ~12% due to better-sqlite3 environment constraints)
+- ✅ Created comprehensive unit tests for constants.ts (42 tests, 100% coverage)
+- ✅ Created comprehensive unit tests for metrics.ts (53 tests, 100% coverage)
+- 📊 **Total new tests created: 209 tests**
+- 📈 **Utils coverage: 75.49%** (up from 53%)
+- 📈 **Global coverage: 13.98%** (up from 11.76%)
+- 🎯 Target: 30% global coverage (Progress: 47% toward goal)
 - 📝 Note: Many service tests blocked by better-sqlite3 native module compilation in Docker environment
 
 ## Current State Analysis
