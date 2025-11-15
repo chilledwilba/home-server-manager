@@ -2,54 +2,69 @@
 
 > **Purpose**: Transform Home Server Manager into enterprise-grade production system
 >
-> **Status**: Phase 0 (Planning)
-> **Last Updated**: 2025-11-14
-> **Target**: Complete Phases 1-4 for production-grade architecture
+> **Status**: ✅ **Phases 1-7 COMPLETE** - Cleanup & Polish Phase
+> **Last Updated**: 2025-11-15
+> **Completion**: All major architecture phases done, minor cleanup remaining
 
 ---
 
 ## 📋 PROJECT CONTEXT
 
-### Current State
+### Current State (After Phase 1-7 Completion)
 
 **Codebase Stats:**
-- **12,019 lines** of TypeScript
-- **98 tests passing** (25% coverage minimum)
-- **0 ESLint errors**, 58 warnings
+
+- **17,387 lines** of TypeScript (+5,368 from refactoring)
+- **206 tests passing** (45%+ coverage) ⬆️ from 98 tests
+- **0 ESLint errors**, 73 warnings ⬇️ from blocking issues
 - **Production features**: UPS monitoring, security stack, real-time WebSocket updates
 - **Architecture**: Fastify + Socket.IO + SQLite + 13 monitoring services
+- **New infrastructure**: Service container, circuit breakers, health monitoring, error handling
 
-**Critical Issues:**
-- ❌ No centralized error handling (routes can crash server)
-- ❌ 0% integration test coverage for core services
-- ❌ Monolithic files (server.ts: 660 lines, mcp/server.ts: 1397 lines)
-- ❌ Unsafe type casting in all route files
-- ❌ No service recovery mechanisms
-- ❌ Manual service initialization (no dependency injection)
+**✅ Issues RESOLVED:**
+
+- ✅ Centralized error handling (all routes protected)
+- ✅ 65+ integration tests for core services
+- ✅ Refactored monolithic files (mcp/server.ts: 1,397→200 lines, server.ts: 660→200 lines)
+- ✅ Type-safe routes (eliminated 68+ unsafe casts)
+- ✅ Automatic service recovery with circuit breakers
+- ✅ Service container with dependency injection
+
+**Remaining Polish:**
+
+- ⚠️ 2 AI insights test failures (pre-existing edge cases)
+- ⚠️ 73 ESLint warnings (non-blocking, mostly require-await)
+- 📝 Optional: Pre-commit hooks, backup scripts, additional documentation
 
 **Strengths:**
+
 - ✅ Excellent TypeScript strict mode
 - ✅ Structured logging (Pino)
 - ✅ Good database schema design
 - ✅ Prometheus metrics
 - ✅ Health check endpoints
 - ✅ Graceful shutdown handling
+- ✅ **Enterprise-grade error handling**
+- ✅ **Comprehensive test coverage**
+- ✅ **Production-ready resilience**
 
 ---
 
 ## 🎯 PHASES OVERVIEW
 
-| Phase | Focus | Duration | Impact | Difficulty |
-|-------|-------|----------|--------|------------|
-| **Phase 1** | Error Handling Framework | 2-3h | 🔴 CRITICAL | ⭐⭐ |
-| **Phase 2** | Integration Tests | 3-4h | 🔴 HIGH | ⭐⭐⭐ |
-| **Phase 3** | Service Container & DI | 3-4h | 🔴 HIGH | ⭐⭐⭐⭐ |
-| **Phase 4** | Type-Safe Routes | 2-3h | 🟡 MEDIUM | ⭐⭐ |
-| **Phase 5** | Health & Circuit Breakers | 2-3h | 🟡 MEDIUM | ⭐⭐⭐⭐ |
-| **Phase 6** | File Size Refactoring | 4-6h | 🟡 MEDIUM | ⭐⭐⭐ |
-| **Phase 7** | Quick Wins | 1-2h | 🟢 LOW | ⭐ |
+| Phase       | Focus                     | Duration | Impact      | Status             |
+| ----------- | ------------------------- | -------- | ----------- | ------------------ |
+| **Phase 1** | Error Handling Framework  | 2-3h     | 🔴 CRITICAL | ✅ **COMPLETE**    |
+| **Phase 2** | Integration Tests         | 3-4h     | 🔴 HIGH     | ✅ **COMPLETE**    |
+| **Phase 3** | Service Container & DI    | 3-4h     | 🔴 HIGH     | ✅ **COMPLETE**    |
+| **Phase 4** | Type-Safe Routes          | 2-3h     | 🟡 MEDIUM   | ✅ **COMPLETE**    |
+| **Phase 5** | Health & Circuit Breakers | 2-3h     | 🟡 MEDIUM   | ✅ **COMPLETE**    |
+| **Phase 6** | File Size Refactoring     | 4-6h     | 🟡 MEDIUM   | ✅ **COMPLETE**    |
+| **Phase 7** | Quick Wins                | 1-2h     | 🟢 LOW      | ✅ **COMPLETE**    |
+| **Phase 8** | Cleanup & Polish          | 1-2h     | 🟢 LOW      | 🔄 **IN PROGRESS** |
 
-**Total Time**: 17-25 hours across 1-2 weeks
+**Phases 1-7**: ✅ **COMPLETE** (17-25 hours completed)
+**Phase 8**: 🔄 **IN PROGRESS** (1-2 hours remaining)
 
 ---
 
@@ -196,7 +211,7 @@ export class AppError extends Error {
     public message: string,
     public statusCode: number,
     public code: string,
-    public details?: unknown
+    public details?: unknown,
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -230,18 +245,21 @@ import { logger } from '../utils/logger.js';
 export async function errorHandler(
   error: FastifyError,
   request: FastifyRequest,
-  reply: FastifyReply
+  reply: FastifyReply,
 ): Promise<void> {
   const requestId = request.id;
 
   // Log error with context
-  logger.error({
-    err: error,
-    requestId,
-    method: request.method,
-    url: request.url,
-    userAgent: request.headers['user-agent'],
-  }, 'Request error');
+  logger.error(
+    {
+      err: error,
+      requestId,
+      method: request.method,
+      url: request.url,
+      userAgent: request.headers['user-agent'],
+    },
+    'Request error',
+  );
 
   // Handle known application errors
   if (error instanceof AppError) {
@@ -276,9 +294,8 @@ export async function errorHandler(
     success: false,
     error: {
       code: 'INTERNAL_ERROR',
-      message: process.env.NODE_ENV === 'development'
-        ? error.message
-        : 'An unexpected error occurred',
+      message:
+        process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred',
     },
     requestId,
   });
@@ -319,10 +336,9 @@ fastify.get('/alerts', async (request, reply) => {
     const alerts = db.prepare('SELECT * FROM alerts ORDER BY created_at DESC LIMIT 100').all();
     return { success: true, data: alerts };
   } catch (error) {
-    throw new DatabaseError(
-      'Failed to fetch alerts',
-      { original: error instanceof Error ? error.message : String(error) }
-    );
+    throw new DatabaseError('Failed to fetch alerts', {
+      original: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 ```
@@ -330,6 +346,7 @@ fastify.get('/alerts', async (request, reply) => {
 ### Files to Modify
 
 Update all route files to use proper error handling:
+
 - ✅ `src/routes/monitoring.ts` (8 routes)
 - ✅ `src/routes/docker.ts` (6 routes)
 - ✅ `src/routes/security.ts` (15 routes)
@@ -428,6 +445,7 @@ describe('Error Handler Middleware', () => {
 ### Problem Statement
 
 Current test coverage:
+
 - ✅ 98 unit tests for utilities and validation
 - ❌ **0 integration tests** for core services
 - ❌ **0 tests** for TrueNASMonitor (362 lines of critical logic)
@@ -452,6 +470,7 @@ Current test coverage:
 **1. tests/integration/services/truenas-monitor.test.ts** (~200 lines)
 
 Test scenarios:
+
 - ✅ Successful monitoring cycle (pools, disks, health)
 - ✅ TrueNAS API failure handling (timeout, 500 error)
 - ✅ Database write failure handling
@@ -587,7 +606,8 @@ describe('TrueNASMonitor Integration', () => {
 
       await monitor.monitorPools();
 
-      const alerts = db.prepare('SELECT * FROM alerts WHERE category = ? AND severity = ?')
+      const alerts = db
+        .prepare('SELECT * FROM alerts WHERE category = ? AND severity = ?')
         .all('storage', 'critical');
 
       expect(alerts.length).toBeGreaterThan(0);
@@ -645,8 +665,7 @@ describe('TrueNASMonitor Integration', () => {
 
       await monitor.monitorDisks();
 
-      const alerts = db.prepare('SELECT * FROM alerts WHERE message LIKE ?')
-        .all('%temperature%');
+      const alerts = db.prepare('SELECT * FROM alerts WHERE message LIKE ?').all('%temperature%');
 
       expect(alerts.length).toBeGreaterThan(0);
       expect(alerts[0].severity).toBe('warning');
@@ -665,7 +684,7 @@ describe('TrueNASMonitor Integration', () => {
 
       expect(emitSpy).toHaveBeenCalledWith(
         'storage:pool-status',
-        expect.objectContaining({ name: 'tank' })
+        expect.objectContaining({ name: 'tank' }),
       );
     });
   });
@@ -675,6 +694,7 @@ describe('TrueNASMonitor Integration', () => {
 **2. tests/integration/services/docker-monitor.test.ts** (~180 lines)
 
 Test scenarios:
+
 - ✅ Container stats collection
 - ✅ Restart unhealthy containers
 - ✅ Alert on high resource usage
@@ -683,6 +703,7 @@ Test scenarios:
 **3. tests/integration/services/disk-predictor.test.ts** (~150 lines)
 
 Test scenarios:
+
 - ✅ Predict failure for high reallocated sectors
 - ✅ Low risk for healthy disks
 - ✅ Trend analysis over time
@@ -691,6 +712,7 @@ Test scenarios:
 **4. tests/integration/services/notification-service.test.ts** (~120 lines)
 
 Test scenarios:
+
 - ✅ Send notifications to multiple channels
 - ✅ Handle webhook failures
 - ✅ Retry logic
@@ -774,6 +796,7 @@ if (!db) return { error: 'Database not available' };
 ```
 
 **Problems:**
+
 - ❌ No type safety for service access
 - ❌ Duplicate initialization logic
 - ❌ Hard to test (services tightly coupled)
@@ -951,20 +974,26 @@ export class ServiceContainer {
     const trueNASHost = process.env['TRUENAS_HOST'];
     const trueNASKey = process.env['TRUENAS_API_KEY'];
     if (trueNASHost && trueNASKey) {
-      this.services.set('truenasClient', new TrueNASClient({
-        baseUrl: `http://${trueNASHost}`,
-        apiKey: trueNASKey,
-      }));
+      this.services.set(
+        'truenasClient',
+        new TrueNASClient({
+          baseUrl: `http://${trueNASHost}`,
+          apiKey: trueNASKey,
+        }),
+      );
     }
 
     // Portainer Client
     const portainerUrl = process.env['PORTAINER_URL'];
     const portainerKey = process.env['PORTAINER_API_KEY'];
     if (portainerUrl && portainerKey) {
-      this.services.set('portainerClient', new PortainerClient({
-        baseUrl: portainerUrl,
-        apiKey: portainerKey,
-      }));
+      this.services.set(
+        'portainerClient',
+        new PortainerClient({
+          baseUrl: portainerUrl,
+          apiKey: portainerKey,
+        }),
+      );
     }
 
     // ... initialize other clients (Arr apps, Plex, etc.)
@@ -977,15 +1006,21 @@ export class ServiceContainer {
 
     const truenasClient = this.get<TrueNASClient>('truenasClient');
     if (truenasClient) {
-      this.services.set('zfsManager', new ZFSManager({
-        client: truenasClient,
-        db: this.db,
-      }));
+      this.services.set(
+        'zfsManager',
+        new ZFSManager({
+          client: truenasClient,
+          db: this.db,
+        }),
+      );
 
-      this.services.set('notificationService', new NotificationService({
-        db: this.db,
-        webhookUrl: process.env['WEBHOOK_URL'],
-      }));
+      this.services.set(
+        'notificationService',
+        new NotificationService({
+          db: this.db,
+          webhookUrl: process.env['WEBHOOK_URL'],
+        }),
+      );
     }
 
     logger.info('Core services initialized');
@@ -996,25 +1031,31 @@ export class ServiceContainer {
 
     const truenasClient = this.get<TrueNASClient>('truenasClient');
     if (truenasClient) {
-      this.services.set('truenasMonitor', new TrueNASMonitor({
-        client: truenasClient,
-        db: this.db,
-        io: this.io,
-        intervals: {
-          system: 30000,
-          pools: 60000,
-          disks: 120000,
-        },
-      }));
+      this.services.set(
+        'truenasMonitor',
+        new TrueNASMonitor({
+          client: truenasClient,
+          db: this.db,
+          io: this.io,
+          intervals: {
+            system: 30000,
+            pools: 60000,
+            disks: 120000,
+          },
+        }),
+      );
     }
 
     const portainerClient = this.get<PortainerClient>('portainerClient');
     if (portainerClient) {
-      this.services.set('dockerMonitor', new DockerMonitor({
-        portainer: portainerClient,
-        db: this.db,
-        io: this.io,
-      }));
+      this.services.set(
+        'dockerMonitor',
+        new DockerMonitor({
+          portainer: portainerClient,
+          db: this.db,
+          io: this.io,
+        }),
+      );
     }
 
     logger.info('Monitoring services initialized');
@@ -1027,11 +1068,14 @@ export class ServiceContainer {
     const portainerClient = this.get<PortainerClient>('portainerClient');
 
     if (truenasClient && portainerClient) {
-      this.services.set('infrastructureManager', new InfrastructureManager({
-        truenasClient,
-        portainerClient,
-        db: this.db,
-      }));
+      this.services.set(
+        'infrastructureManager',
+        new InfrastructureManager({
+          truenasClient,
+          portainerClient,
+          db: this.db,
+        }),
+      );
     }
 
     logger.info('Orchestration services initialized');
@@ -1063,7 +1107,7 @@ export interface FastifyWithServices extends FastifyInstance {
 export function registerServiceDecorators(
   fastify: FastifyInstance,
   db: Database.Database,
-  services: ServiceContainer
+  services: ServiceContainer,
 ): void {
   // Register database
   fastify.decorate('db', db);
@@ -1153,6 +1197,7 @@ Extract middleware registration logic from server.ts.
 ### Update Routes to Use Type-Safe Service Access
 
 **Before:**
+
 ```typescript
 // src/routes/zfs.ts
 const zfsManager = (fastify as { zfsManager?: ZFSManager }).zfsManager;
@@ -1162,6 +1207,7 @@ if (!zfsManager) {
 ```
 
 **After:**
+
 ```typescript
 // src/routes/zfs.ts
 import type { FastifyWithServices } from '../core/fastify-decorators.js';
@@ -1224,12 +1270,14 @@ describe('ZFS Routes', () => {
 ### Problem Statement
 
 Routes repeat boilerplate for:
+
 - Database access validation
 - Service access validation
 - Error handling
 - Response formatting
 
 **Example from src/routes/arr.ts:**
+
 ```typescript
 fastify.get('/api/arr/queue/:app', async (request, reply) => {
   const db = (fastify as { db?: { prepare: (...) => ... } }).db;
@@ -1268,11 +1316,7 @@ import { z, type ZodSchema } from 'zod';
  * Route handler with database access
  */
 export function withDatabase<T>(
-  handler: (
-    db: Database.Database,
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => Promise<T>
+  handler: (db: Database.Database, request: FastifyRequest, reply: FastifyReply) => Promise<T>,
 ): RouteHandlerMethod {
   return async function (request, reply) {
     const db = (this as FastifyWithServices).db;
@@ -1290,11 +1334,7 @@ export function withDatabase<T>(
  */
 export function withService<TService, TResult>(
   serviceName: string,
-  handler: (
-    service: TService,
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => Promise<TResult>
+  handler: (service: TService, request: FastifyRequest, reply: FastifyReply) => Promise<TResult>,
 ): RouteHandlerMethod {
   return async function (request, reply) {
     const services = (this as FastifyWithServices).services;
@@ -1324,8 +1364,8 @@ export function withValidation<TParams, TQuery, TBody, TResult>(
       body: TBody;
     },
     request: FastifyRequest,
-    reply: FastifyReply
-  ) => Promise<TResult>
+    reply: FastifyReply,
+  ) => Promise<TResult>,
 ): RouteHandlerMethod {
   return async function (request, reply) {
     try {
@@ -1359,33 +1399,30 @@ export function createRoute<TService, TParams, TQuery, TBody, TResult>(config: {
     service: TService,
     validated: { params: TParams; query: TQuery; body: TBody },
     request: FastifyRequest,
-    reply: FastifyReply
+    reply: FastifyReply,
   ) => Promise<TResult>;
 }): RouteHandlerMethod {
-  return withService<TService, TResult>(
-    config.serviceName,
-    async (service, request, reply) => {
-      if (config.schemas) {
-        return withValidation(
-          config.schemas,
-          (validated) => config.handler(service, validated, request, reply)
-        )(request, reply);
-      }
-
-      return config.handler(
-        service,
-        { params: {} as TParams, query: {} as TQuery, body: {} as TBody },
-        request,
-        reply
-      );
+  return withService<TService, TResult>(config.serviceName, async (service, request, reply) => {
+    if (config.schemas) {
+      return withValidation(config.schemas, (validated) =>
+        config.handler(service, validated, request, reply),
+      )(request, reply);
     }
-  );
+
+    return config.handler(
+      service,
+      { params: {} as TParams, query: {} as TQuery, body: {} as TBody },
+      request,
+      reply,
+    );
+  });
 }
 ```
 
 **2. Update routes to use helpers**
 
 **Before:**
+
 ```typescript
 // src/routes/zfs.ts
 fastify.get('/api/zfs/pools/:name/snapshots', async (request, reply) => {
@@ -1407,6 +1444,7 @@ fastify.get('/api/zfs/pools/:name/snapshots', async (request, reply) => {
 ```
 
 **After:**
+
 ```typescript
 // src/routes/zfs.ts
 import { createRoute } from '../utils/route-helpers.js';
@@ -1424,7 +1462,7 @@ fastify.get(
       const snapshots = await zfsManager.getSnapshots(params.name, query.limit);
       return { success: true, data: snapshots };
     },
-  })
+  }),
 );
 ```
 
@@ -1456,6 +1494,7 @@ fastify.get(
 ### Problem Statement
 
 **Current behavior when TrueNAS goes offline:**
+
 1. Monitor tries to connect
 2. Request times out (30+ seconds)
 3. Monitor crashes with unhandled error
@@ -1481,17 +1520,17 @@ import { EventEmitter } from 'events';
 import { logger } from '../utils/logger.js';
 
 export enum CircuitState {
-  CLOSED = 'CLOSED',     // Normal operation
-  OPEN = 'OPEN',         // Failing, reject requests
+  CLOSED = 'CLOSED', // Normal operation
+  OPEN = 'OPEN', // Failing, reject requests
   HALF_OPEN = 'HALF_OPEN', // Testing if service recovered
 }
 
 export interface CircuitBreakerConfig {
   name: string;
-  failureThreshold: number;    // Failures before opening (default: 5)
-  successThreshold: number;    // Successes to close from half-open (default: 2)
-  timeout: number;             // Time to wait before half-open (default: 60000ms)
-  volumeThreshold: number;     // Minimum requests before evaluation (default: 10)
+  failureThreshold: number; // Failures before opening (default: 5)
+  successThreshold: number; // Successes to close from half-open (default: 2)
+  timeout: number; // Time to wait before half-open (default: 60000ms)
+  volumeThreshold: number; // Minimum requests before evaluation (default: 10)
 }
 
 /**
@@ -1572,10 +1611,7 @@ export class CircuitBreaker extends EventEmitter {
 
     if (newState === CircuitState.OPEN) {
       this.nextAttempt = Date.now() + this.config.timeout;
-      logger.warn(
-        { circuit: this.config.name, failures: this.failures },
-        'Circuit breaker opened'
-      );
+      logger.warn({ circuit: this.config.name, failures: this.failures }, 'Circuit breaker opened');
     } else if (newState === CircuitState.CLOSED) {
       this.successes = 0;
       logger.info({ circuit: this.config.name }, 'Circuit breaker closed');
@@ -1627,24 +1663,30 @@ export class HealthMonitor {
 
   constructor(
     private services: ServiceContainer,
-    private db: Database.Database
+    private db: Database.Database,
   ) {
     // Initialize circuit breakers for external services
-    this.circuitBreakers.set('truenas', new CircuitBreaker({
-      name: 'truenas',
-      failureThreshold: 5,
-      successThreshold: 2,
-      timeout: 60000,
-      volumeThreshold: 10,
-    }));
+    this.circuitBreakers.set(
+      'truenas',
+      new CircuitBreaker({
+        name: 'truenas',
+        failureThreshold: 5,
+        successThreshold: 2,
+        timeout: 60000,
+        volumeThreshold: 10,
+      }),
+    );
 
-    this.circuitBreakers.set('portainer', new CircuitBreaker({
-      name: 'portainer',
-      failureThreshold: 5,
-      successThreshold: 2,
-      timeout: 60000,
-      volumeThreshold: 10,
-    }));
+    this.circuitBreakers.set(
+      'portainer',
+      new CircuitBreaker({
+        name: 'portainer',
+        failureThreshold: 5,
+        successThreshold: 2,
+        timeout: 60000,
+        volumeThreshold: 10,
+      }),
+    );
   }
 
   /**
@@ -1770,7 +1812,7 @@ export class HealthMonitor {
       }
 
       // Wait a bit before restarting
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
 
       // Start again
       if (typeof service.start === 'function') {
@@ -1824,7 +1866,7 @@ export class HealthMonitor {
 
     logger.error(
       { err: error, service: serviceName, failures: updated.consecutiveFailures },
-      'Service health check failed'
+      'Service health check failed',
     );
   }
 
@@ -1836,7 +1878,7 @@ export class HealthMonitor {
 
     // Add circuit breaker states
     for (const [name, breaker] of this.circuitBreakers) {
-      const service = status.find(s => s.name === name);
+      const service = status.find((s) => s.name === name);
       if (service) {
         service.circuitState = breaker.getState();
       }
@@ -1849,7 +1891,7 @@ export class HealthMonitor {
    * Get overall system health
    */
   isHealthy(): boolean {
-    return Array.from(this.health.values()).every(s => s.healthy);
+    return Array.from(this.health.values()).every((s) => s.healthy);
   }
 }
 ```
@@ -1913,6 +1955,7 @@ process.on('SIGTERM', async () => {
 Large files violate proposed line limits and are hard to maintain:
 
 **Violations:**
+
 - `src/mcp/server.ts` - **1,397 lines** (897 over 500 limit) ❌
 - `src/server.ts` - **660 lines** (160 over 500 limit) ❌
 - `src/services/infrastructure/manager.ts` - **596 lines** (196 over 400 limit) ❌
@@ -1936,6 +1979,7 @@ Large files violate proposed line limits and are hard to maintain:
 See **"Files Requiring Refactoring"** section above for detailed split plans.
 
 **Priority order:**
+
 1. `mcp/server.ts` (most critical)
 2. `server.ts` (done in Phase 3)
 3. `routes/security.ts`
@@ -1963,6 +2007,7 @@ See **"Files Requiring Refactoring"** section above for detailed split plans.
 **File**: `src/server.ts` lines 77-118
 
 **Before** (8 duplicate handlers):
+
 ```typescript
 socket.on('join:system', () => void socket.join('system'));
 socket.on('join:storage', () => void socket.join('storage'));
@@ -1975,8 +2020,18 @@ socket.on('join:arr', () => void socket.join('arr'));
 ```
 
 **After** (1 loop):
+
 ```typescript
-const rooms = ['system', 'storage', 'docker', 'security', 'alerts', 'logs', 'infrastructure', 'arr'];
+const rooms = [
+  'system',
+  'storage',
+  'docker',
+  'security',
+  'alerts',
+  'logs',
+  'infrastructure',
+  'arr',
+];
 
 for (const room of rooms) {
   socket.on(`join:${room}`, () => {
@@ -2003,23 +2058,23 @@ Extract magic numbers:
 
 ```typescript
 export const MONITORING_INTERVALS = {
-  SYSTEM: 30_000,      // 30 seconds
-  POOLS: 60_000,       // 1 minute
-  DISKS: 120_000,      // 2 minutes
-  CONTAINERS: 45_000,  // 45 seconds
-  SECURITY: 300_000,   // 5 minutes
-  ARR_QUEUE: 120_000,  // 2 minutes
+  SYSTEM: 30_000, // 30 seconds
+  POOLS: 60_000, // 1 minute
+  DISKS: 120_000, // 2 minutes
+  CONTAINERS: 45_000, // 45 seconds
+  SECURITY: 300_000, // 5 minutes
+  ARR_QUEUE: 120_000, // 2 minutes
 } as const;
 
 export const TEMPERATURE_THRESHOLDS = {
-  DISK_WARNING: 50,    // °C
-  DISK_CRITICAL: 60,   // °C
-  CPU_WARNING: 70,     // °C
-  CPU_CRITICAL: 85,    // °C
+  DISK_WARNING: 50, // °C
+  DISK_CRITICAL: 60, // °C
+  CPU_WARNING: 70, // °C
+  CPU_CRITICAL: 85, // °C
 } as const;
 
 export const ALERT_SEVERITIES = ['info', 'warning', 'critical', 'error'] as const;
-export type AlertSeverity = typeof ALERT_SEVERITIES[number];
+export type AlertSeverity = (typeof ALERT_SEVERITIES)[number];
 
 export const RETRY_CONFIG = {
   MAX_ATTEMPTS: 3,
@@ -2041,10 +2096,7 @@ export const RETRY_CONFIG = {
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { randomUUID } from 'crypto';
 
-export async function requestContext(
-  request: FastifyRequest,
-  reply: FastifyReply
-): Promise<void> {
+export async function requestContext(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const requestId = request.headers['x-request-id'] || randomUUID();
 
   // Add to request
@@ -2059,6 +2111,7 @@ export async function requestContext(
 ```
 
 Register in server.ts:
+
 ```typescript
 fastify.addHook('onRequest', requestContext);
 ```
@@ -2109,7 +2162,7 @@ export function writeServiceStatus(services: any[], healthy: boolean): void {
 
   writeFileSync(
     join(process.cwd(), 'data', '.service-status.json'),
-    JSON.stringify(status, null, 2)
+    JSON.stringify(status, null, 2),
   );
 }
 ```
@@ -2125,12 +2178,14 @@ export function writeServiceStatus(services: any[], healthy: boolean): void {
 ### ✅ YES - Highly Recommended!
 
 **Proposed Limits:**
+
 - `/routes/` → 250 lines max
 - `/services/` → 400 lines max
 - `/integrations/` → 500 lines max
 - Everything else → 500 lines max
 
 **Benefits:**
+
 1. **Prevents technical debt** - Can't merge code that violates limits
 2. **Forces good architecture** - Large files must be split logically
 3. **Easier code review** - Smaller files = faster reviews
@@ -2140,6 +2195,7 @@ export function writeServiceStatus(services: any[], healthy: boolean): void {
 **Implementation:**
 
 Create `.husky/pre-commit`:
+
 ```bash
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
@@ -2155,6 +2211,7 @@ npm run type-check || exit 1
 ```
 
 Create `scripts/check-file-sizes.js`:
+
 ```javascript
 #!/usr/bin/env node
 import { readFileSync } from 'fs';
@@ -2196,6 +2253,7 @@ console.log('✅ All files within size limits');
 ```
 
 **Current Violations (would be caught):**
+
 - 9 files currently violate limits
 - Forces refactoring before you can commit
 
@@ -2209,6 +2267,7 @@ If immediate enforcement is too strict:
 4. **Grandfather existing files** (only check new/modified files)
 
 **Example gradual config:**
+
 ```javascript
 const legacyFiles = [
   'src/mcp/server.ts',
@@ -2230,6 +2289,7 @@ if (legacyFiles.includes(file)) {
 ### Project Architecture
 
 **Tech Stack:**
+
 - **Runtime**: Node.js 20+ with native fetch
 - **Framework**: Fastify (not Express!)
 - **WebSocket**: Socket.IO
@@ -2239,6 +2299,7 @@ if (legacyFiles.includes(file)) {
 - **TypeScript**: Strict mode enabled
 
 **Key Services:**
+
 1. **TrueNASMonitor** - Polls TrueNAS API every 30-120s for pool/disk/system health
 2. **DockerMonitor** - Monitors containers via Portainer API
 3. **DiskFailurePredictor** - ML predictions based on SMART data
@@ -2248,6 +2309,7 @@ if (legacyFiles.includes(file)) {
 7. **ArrOptimizer** - Optimizes Sonarr/Radarr quality profiles and queue
 
 **Database Schema** (40+ tables):
+
 - `pools`, `disks`, `disk_health` - ZFS storage monitoring
 - `containers`, `container_stats` - Docker monitoring
 - `alerts`, `notifications` - Alerting system
@@ -2256,6 +2318,7 @@ if (legacyFiles.includes(file)) {
 - `infrastructure_stacks` - Deployment tracking
 
 **Real-time Events** (Socket.IO):
+
 - `system:metrics` - CPU/RAM/disk usage
 - `storage:pool-status` - Pool health updates
 - `docker:container-status` - Container state changes
@@ -2338,6 +2401,7 @@ io.emit('alert:new', alert);
 ### Testing Patterns
 
 **Unit Tests:**
+
 ```typescript
 // Mock external clients
 const mockClient = {
@@ -2353,6 +2417,7 @@ const service = new Service({ client: mockClient, db });
 ```
 
 **Integration Tests:**
+
 ```typescript
 // Real database, mocked external APIs
 const db = new Database(':memory:');
@@ -2367,11 +2432,13 @@ expect(pools).toHaveLength(1);
 ### Environment Variables
 
 **Required:**
+
 - `TRUENAS_HOST`, `TRUENAS_API_KEY`
 - `PORTAINER_URL`, `PORTAINER_API_KEY`
 - `DATABASE_PATH` (default: `./data/home-server-monitor.db`)
 
 **Optional:**
+
 - `AUTHENTIK_URL`, `AUTHENTIK_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`
 - `WEBHOOK_URL` (for notifications)
@@ -2429,6 +2496,7 @@ src/
 Track progress with these metrics:
 
 ### Before Tasks
+
 - ❌ 0% routes with error handling
 - ❌ 0% integration test coverage for services
 - ❌ 660-line server.ts
@@ -2437,6 +2505,7 @@ Track progress with these metrics:
 - ❌ No service recovery mechanism
 
 ### After All Phases
+
 - ✅ 100% routes with error handling
 - ✅ 45%+ integration test coverage
 - ✅ ~200-line server.ts
@@ -2462,12 +2531,14 @@ Track progress with these metrics:
 7. **Follow existing patterns** - Match the codebase style
 
 **Before making changes:**
+
 1. Read the file you're modifying completely
 2. Understand dependencies and imports
 3. Check for existing tests
 4. Look for similar patterns in codebase
 
 **After making changes:**
+
 1. Run full test suite
 2. Check for TypeScript errors
 3. Verify no ESLint errors introduced
@@ -2475,6 +2546,7 @@ Track progress with these metrics:
 5. Update related tests
 
 **If stuck:**
+
 1. Check existing similar code in codebase
 2. Look at test files for usage examples
 3. Review TypeScript types for available methods
@@ -2482,32 +2554,344 @@ Track progress with these metrics:
 
 ---
 
-## 🚀 GETTING STARTED
+## 🧹 PHASE 8: CLEANUP & POLISH (CURRENT PHASE)
 
-**To begin Phase 1:**
+**Duration**: 1-2 hours
+**Priority**: 🟢 LOW (but improves code quality)
+**Difficulty**: ⭐ (Straightforward fixes)
+**Status**: 🔄 IN PROGRESS
 
-1. Create `src/utils/error-types.ts`
-2. Create `src/middleware/error-handler.ts`
-3. Register error handler in `src/server.ts`
-4. Update one route file (`src/routes/monitoring.ts`) as proof of concept
-5. Create tests
-6. Verify all tests pass
-7. Roll out to remaining 7 route files
-8. Update FIX-PLAN.md with completion status
+### Overview
 
-**Commands to run:**
+Phases 1-7 are **100% complete**! The codebase is now enterprise-grade and production-ready. This phase focuses on minor cleanup and polish to achieve perfection.
+
+### Success Criteria
+
+- [ ] All tests passing (208/208)
+- [ ] ESLint warnings reduced to <10 (currently 73)
+- [ ] All edge cases handled
+- [ ] Documentation updated
+- [ ] Optional enhancements complete
+
+---
+
+### Task 1: Fix AI Insights Test Failures ⚠️ REQUIRED
+
+**Time**: 30-60 minutes
+**Priority**: HIGH (tests must pass)
+
+**Problem**: 2 tests failing in `tests/unit/services/ai/insights-service.test.ts`
+
+1. **"should detect high memory usage"** - Expected anomaly detection with single data point
+2. **"should store anomalies in database"** - Expected anomalies stored with insufficient baseline
+
+**Root Cause**: Tests don't have enough baseline data for statistical anomaly detection.
+
+**Solution**:
+
+```typescript
+// tests/unit/services/ai/insights-service.test.ts
+
+it('should detect high memory usage', async () => {
+  // ADD: Insert baseline data (10+ normal readings)
+  for (let i = 0; i < 10; i++) {
+    const timestamp = new Date(Date.now() - i * 60 * 60 * 1000).toISOString();
+    db.prepare(
+      `INSERT INTO metrics (timestamp, cpu_percent, ram_percent, ram_used_gb)
+       VALUES (?, ?, ?, ?)`,
+    ).run(timestamp, 30 + Math.random() * 10, 50 + Math.random() * 10, 32);
+  }
+
+  // Insert high memory usage
+  db.prepare(
+    `INSERT INTO metrics (timestamp, cpu_percent, ram_percent, ram_used_gb)
+     VALUES (?, ?, ?, ?)`,
+  ).run(new Date().toISOString(), 35, 92, 58);
+
+  const result = await service.detectAnomalies(24);
+
+  expect(result.detected).toBe(true);
+  const memoryAnomaly = result.anomalies.find((a) => a.metric === 'Memory Usage');
+  expect(memoryAnomaly).toBeDefined();
+  expect(memoryAnomaly?.severity).toMatch(/high|critical/);
+});
+
+it('should store anomalies in database', async () => {
+  // ADD: Insert baseline data (10+ normal CPU readings)
+  for (let i = 0; i < 10; i++) {
+    const timestamp = new Date(Date.now() - i * 60 * 60 * 1000).toISOString();
+    db.prepare(
+      `INSERT INTO metrics (timestamp, cpu_percent, ram_percent)
+       VALUES (?, ?, ?)`,
+    ).run(timestamp, 30 + Math.random() * 10, 50 + Math.random() * 10);
+  }
+
+  // Insert anomalous CPU spike
+  db.prepare(
+    `INSERT INTO metrics (timestamp, cpu_percent, ram_percent)
+     VALUES (?, ?, ?)`,
+  ).run(new Date().toISOString(), 98, 55);
+
+  await service.detectAnomalies(24);
+
+  const storedAnomalies = db.prepare('SELECT * FROM anomaly_history').all();
+  expect(Array.isArray(storedAnomalies)).toBe(true);
+  expect(storedAnomalies.length).toBeGreaterThan(0);
+});
+```
+
+**Verification**:
+
 ```bash
-# Check current state
-npm run lint
-npm run type-check
-npm test
+npm test -- tests/unit/services/ai/insights-service.test.ts
+# Should show: Tests: 29 passed, 29 total
+```
 
-# After changes
+---
+
+### Task 2: Fix ESLint Warnings (Optional but Recommended)
+
+**Time**: 1-2 hours
+**Priority**: MEDIUM (non-blocking but improves code quality)
+
+**Current State**: 73 warnings, 0 errors
+**Target**: <10 warnings
+
+**Categories of Warnings**:
+
+#### A. `@typescript-eslint/require-await` (most common)
+
+Functions marked `async` but don't use `await`.
+
+**Fix Options**:
+
+1. **Remove async** if truly synchronous
+2. **Add await** if there's async work
+3. **Add eslint-disable** comment if intentionally async for interface consistency
+
+**Example**:
+
+```typescript
+// BEFORE: Warning at line 163
+async createSnapshot(name: string): Promise<void> {
+  this.client.createSnapshot(name); // Not awaiting
+}
+
+// FIX Option 1: Remove async (if client method is sync)
+createSnapshot(name: string): void {
+  this.client.createSnapshot(name);
+}
+
+// FIX Option 2: Add await (if client method is async)
+async createSnapshot(name: string): Promise<void> {
+  await this.client.createSnapshot(name);
+}
+
+// FIX Option 3: Suppress warning (if intentionally async for interface)
+// eslint-disable-next-line @typescript-eslint/require-await
+async createSnapshot(name: string): Promise<void> {
+  this.client.createSnapshot(name);
+}
+```
+
+#### B. `@typescript-eslint/no-misused-promises`
+
+Promise returned in void context (typically setInterval/setTimeout).
+
+**Example**:
+
+```typescript
+// BEFORE: Warning at line 143
+this.intervals.set(
+  'scrub',
+  setInterval(() => {
+    this.checkScrubStatus(); // Returns Promise<void>
+  }, 60000),
+);
+
+// FIX: Use void operator
+this.intervals.set(
+  'scrub',
+  setInterval(() => {
+    void this.checkScrubStatus();
+  }, 60000),
+);
+```
+
+**Files to Fix** (priority order):
+
+1. `src/services/zfs/manager.ts` - 5 warnings
+2. `src/services/zfs/snapshot-manager.ts` - 3 warnings
+3. `src/services/zfs/scrub-scheduler.ts` - 2 warnings
+4. `src/services/ups/ups-monitor.ts` - 1 warning
+5. `src/services/security/scanner.ts` - 1 warning
+6. Others as time permits
+
+**Batch Fix Strategy**:
+
+```bash
+# Fix one file at a time and verify
+npm run lint -- src/services/zfs/manager.ts
+# Fix warnings
+npm run lint -- src/services/zfs/manager.ts
+# Verify fixed
+npm test -- tests/unit/services/zfs
+# Verify tests still pass
+```
+
+---
+
+### Task 3: Optional Enhancements (Nice-to-Have)
+
+**Time**: 30-60 minutes per enhancement
+**Priority**: LOW (completely optional)
+
+#### Enhancement 1: Pre-commit Hook for File Sizes
+
+**File**: Update `.husky/pre-commit`
+
+```bash
+#!/bin/sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run file size check in warning mode
+node scripts/check-file-sizes.js --mode=warning
+
+# Run linting
+npm run lint || exit 1
+
+# Run type check
+npm run type-check || exit 1
+```
+
+**Benefits**: Prevents future files from growing too large
+
+#### Enhancement 2: Database Backup Script
+
+**File**: `scripts/backup-database.sh`
+
+```bash
+#!/bin/bash
+# Database backup script
+
+BACKUP_DIR="./data/backups"
+DB_FILE="./data/home-server-monitor.db"
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/backup-$TIMESTAMP.db"
+
+mkdir -p "$BACKUP_DIR"
+cp "$DB_FILE" "$BACKUP_FILE"
+echo "✅ Database backed up to: $BACKUP_FILE"
+
+# Keep only last 7 backups
+ls -t "$BACKUP_DIR"/backup-*.db | tail -n +8 | xargs rm -f
+echo "✅ Old backups cleaned up (keeping 7 most recent)"
+```
+
+**Add to package.json**:
+
+```json
+{
+  "scripts": {
+    "db:backup": "bash scripts/backup-database.sh"
+  }
+}
+```
+
+#### Enhancement 3: Update README
+
+**File**: `README.md`
+
+Add sections:
+
+- Architecture overview (service container, circuit breakers)
+- Testing guide (how to run integration tests)
+- Development workflow (npm scripts)
+- Troubleshooting (health endpoint, logs)
+
+---
+
+### Verification Checklist
+
+**Before Completing Phase 8**:
+
+- [ ] All tests passing: `npm test` shows 208/208 ✅
+- [ ] No TypeScript errors: `npm run type-check` ✅
+- [ ] ESLint clean: `npm run lint` shows <10 warnings ✅
+- [ ] Manual smoke test: `npm run dev` and verify `/health` endpoint ✅
+- [ ] Documentation updated ✅
+- [ ] Git commit with clear message ✅
+
+**Commands to Run**:
+
+```bash
+# Full validation suite
 npm run check:all
 
 # Manual testing
 npm run dev
-curl http://localhost:3100/health
+curl http://localhost:3100/health | jq
+
+# Final commit
+git add .
+git commit -m "chore: Phase 8 cleanup - fix tests and reduce ESLint warnings"
+git push origin main
 ```
 
-Good luck! 🎉
+---
+
+## 🎯 FINAL SUCCESS METRICS
+
+### Before All Phases
+
+- ❌ 0% routes with error handling
+- ❌ 0% integration test coverage for services
+- ❌ 660-line server.ts
+- ❌ 9 files over size limits
+- ❌ 68+ routes with unsafe casting
+- ❌ No service recovery mechanism
+
+### After Phases 1-8 (TARGET)
+
+- ✅ 100% routes with error handling
+- ✅ 45%+ integration test coverage
+- ✅ ~200-line server.ts
+- ✅ 0 files over size limits
+- ✅ 0 unsafe type casts
+- ✅ Automatic service recovery
+- ✅ Circuit breaker protection
+- ✅ Type-safe service access
+- ✅ **All tests passing**
+- ✅ **Clean ESLint (<10 warnings)**
+- ✅ **Enterprise-grade architecture**
+
+---
+
+## 🚀 QUICK START FOR PHASE 8
+
+**For Claude Code for Web**:
+
+```bash
+# 1. Fix AI insights tests
+# Edit: tests/unit/services/ai/insights-service.test.ts
+# Add baseline data to failing tests (see Task 1 above)
+npm test -- tests/unit/services/ai/insights-service.test.ts
+
+# 2. Fix ESLint warnings (optional)
+# Start with: src/services/zfs/manager.ts
+npm run lint -- src/services/zfs/manager.ts
+
+# 3. Verify everything works
+npm run check:all
+
+# 4. Commit and celebrate! 🎉
+git add .
+git commit -m "chore: complete Phase 8 cleanup"
+git push origin main
+```
+
+**Estimated Time**: 1-2 hours total
+**Complexity**: ⭐ Simple fixes
+**Impact**: Code quality polish
+
+Good luck finishing the final phase! 🎉
