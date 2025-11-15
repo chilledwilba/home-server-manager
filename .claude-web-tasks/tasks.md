@@ -5,16 +5,16 @@
 > **Total Tasks**: 10 priorities, ~40 sub-tasks
 > **Estimated Time**: 25-35 hours total
 
-## 🎯 Current Focus: Priority 2
+## 🎯 Current Focus: Priority 3
 
-Start with: **Priority 2 - Test Coverage to 30%+**
+Start with: **Priority 3 - OpenAPI/Swagger Documentation**
 
 ## 📊 Progress Tracker
 
 | Priority | Task                       | Status         | Time Est. | Completed  |
 | -------- | -------------------------- | -------------- | --------- | ---------- |
 | P1       | npm → pnpm Migration       | 🟢 Completed   | 2-3h      | 2025-11-15 |
-| P2       | Test Coverage to 30%+      | 🟡 In Progress | 4-6h      | -          |
+| P2       | Test Coverage to 30%+      | 🟢 Completed   | 4-6h      | 2025-11-15 |
 | P3       | OpenAPI/Swagger Docs       | 🔴 Not Started | 3-4h      | -          |
 | P4       | Error Handling Standard    | 🔴 Not Started | 2-3h      | -          |
 | P5       | Feature Flags System       | 🔴 Not Started | 2-3h      | -          |
@@ -316,8 +316,15 @@ Benefits:
 - ✅ Created route tests for monitoring (14 tests)
 - ✅ Created route tests for remediation (17 tests)
 - ✅ Created route tests for arr (23 tests)
+- ✅ Created route tests for ups (21 tests)
+- ✅ Created route tests for zfs (17 tests)
+- ✅ Created core tests for health-routes (16 tests)
 - ✅ Enhanced fail2ban integration tests (11 new tests, now 23 total)
-- 📊 **Total new tests created: 505 tests**
+- ✅ Created comprehensive security route tests (28 tests):
+  - Scanner routes: POST /scan, GET /findings, GET /report, POST /findings/fix
+  - Orchestrator routes: GET /status, /tunnel/status, /auth/status, /fail2ban/status
+  - Fail2ban action routes: POST /ban, POST /unban, GET /banned, GET /status/history
+- 📊 **Total new tests created: 588 tests**
 - 📈 **Utils coverage: 75.49%** (up from 53%)
 - 📈 **Middleware coverage: 47.56%** (up from 36.28%)
 - 📈 **Portainer integration coverage: 93.68%** (up from 0%)
@@ -327,8 +334,9 @@ Benefits:
 - 📈 **Arr Apps integration coverage: 97.36%** (up from 0%)
 - 📈 **UPS/NUT integration coverage: 100%** (up from 10.16%)
 - 📈 **Fail2ban integration coverage: 96.2%** (up from 51.89%)
-- 📈 **Global coverage: 26.1%** (up from 11.76%)
-- 🎯 Target: 30% global coverage (Progress: 92% toward goal, 3.9 points remaining)
+- 📈 **Security routes coverage**: scanner 88.88%, orchestrator 80%, fail2ban 81.25%
+- 📈 **Global coverage: 32.05% lines** (up from 11.76%)
+- ✅ **Target ACHIEVED**: 30% global coverage goal exceeded! (32.05% lines, 31.72% statements, 28.86% branches, 29.29% functions)
 - 📝 Note: Many service tests blocked by better-sqlite3 native module compilation in Docker environment
 
 ## Current State Analysis
