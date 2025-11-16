@@ -13,7 +13,58 @@ _No active issues. Issues will appear here as they are encountered._
 
 ## Resolved Issues
 
-_Resolved issues will be moved here for reference._
+### [ISSUE-001] better-sqlite3 Build Failure
+**Status**: 🟢 Resolved
+**Priority**: MAINTENANCE
+**Reported**: 2025-11-15
+**Resolved**: 2025-11-16
+
+**Description**:
+Native module better-sqlite3 required manual rebuild after pnpm installation
+
+**Impact**:
+- Database functionality blocked
+- Tests couldn't run
+- Manual intervention required after each install
+
+**Resolution**:
+- Added .npmrc configuration with build approval settings
+- Configured secure build script allowlist for better-sqlite3
+- Native module now builds automatically during pnpm install
+- Resolved in commit: 4de3022
+
+**Lessons learned**:
+- pnpm's security model requires explicit build approvals
+- Configuration approach is better than manual commands
+- Document build requirements for future reference
+
+---
+
+### [ISSUE-002] SecurityScanner Test Failures
+**Status**: 🟢 Resolved
+**Priority**: MAINTENANCE
+**Reported**: 2025-11-15
+**Resolved**: 2025-11-16
+
+**Description**:
+2 failing tests in SecurityScanner (event emission and finding filter)
+
+**Impact**:
+- Test suite not fully passing
+- CI/CD pipeline showing failures
+- Reduced confidence in test coverage
+
+**Resolution**:
+- Fixed event emission test assertions
+- Corrected finding filter test logic
+- Resolved resource leaks in test cleanup
+- All tests now passing (784/784)
+- Resolved in commit: 7280ba8
+
+**Lessons learned**:
+- Always ensure proper cleanup in tests
+- Mock implementations must match actual behavior
+- Resource leaks can cause cascading test failures
 
 ---
 
@@ -92,4 +143,4 @@ pnpm run type-check
 
 ---
 
-**Last Updated**: 2025-11-15
+**Last Updated**: 2025-11-16
