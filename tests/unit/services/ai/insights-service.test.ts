@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import Database from 'better-sqlite3';
 import { AIInsightsService } from '../../../../src/services/ai/insights-service.js';
 
@@ -133,13 +133,14 @@ describe('AIInsightsService', () => {
     });
 
     it('should detect CPU spike anomaly', async () => {
-      // Insert an anomalous high CPU reading
+      // Insert an anomalous high CPU reading with a future timestamp to ensure it's the latest
+      const futureTime = Date.now() + 1000; // 1 second in the future
       db.prepare(
         `
         INSERT INTO metrics (timestamp, cpu_percent, ram_percent)
         VALUES (?, ?, ?)
       `,
-      ).run(new Date().toISOString(), 95, 55);
+      ).run(new Date(futureTime).toISOString(), 95, 55);
 
       const result = await service.detectAnomalies(24);
 

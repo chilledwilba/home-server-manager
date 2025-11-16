@@ -50,10 +50,10 @@ export class OllamaClient {
    * Send a chat message to Ollama
    */
   async chat(messages: ChatMessage[]): Promise<string> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
+    try {
       const response = await fetch(`${this.baseUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,8 +65,6 @@ export class OllamaClient {
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
         throw new Error(`Ollama error: ${response.status} ${response.statusText}`);
       }
@@ -76,6 +74,8 @@ export class OllamaClient {
     } catch (error) {
       logger.error({ err: error }, 'Failed to chat with Ollama');
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -170,19 +170,20 @@ Provide specific, implementable recommendations.`;
    * Check if Ollama is available and responding
    */
   async isAvailable(): Promise<boolean> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
+    try {
       const response = await fetch(`${this.baseUrl}/api/tags`, {
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
       return response.ok;
     } catch (error) {
       logger.debug({ err: error }, 'Ollama not available');
       return false;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
