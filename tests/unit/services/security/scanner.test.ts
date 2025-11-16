@@ -1,7 +1,7 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { createServer } from 'node:http';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import Database from 'better-sqlite3';
 import { Server as SocketIOServer } from 'socket.io';
-import { createServer } from 'http';
 import { SecurityScanner } from '../../../../src/services/security/scanner.js';
 
 describe('SecurityScanner', () => {
@@ -10,6 +10,7 @@ describe('SecurityScanner', () => {
   let httpServer: ReturnType<typeof createServer>;
   let scanner: SecurityScanner;
   let emitSpy: jest.SpiedFunction<any>;
+  let mockRoom: any;
 
   beforeEach(() => {
     // Create in-memory database
@@ -35,8 +36,16 @@ describe('SecurityScanner', () => {
     httpServer = createServer();
     io = new SocketIOServer(httpServer);
 
-    // Spy on emit
-    emitSpy = jest.spyOn(io.to('security') as any, 'emit');
+    // Create a mock room with emit method
+    mockRoom = {
+      emit: jest.fn(),
+    };
+
+    // Mock the 'to' method to return our mock room
+    jest.spyOn(io, 'to').mockReturnValue(mockRoom as any);
+
+    // Spy on the mock room's emit
+    emitSpy = mockRoom.emit;
 
     scanner = new SecurityScanner(db, io);
   });
@@ -98,7 +107,7 @@ describe('SecurityScanner', () => {
 
       const privFindings = findings.filter((f) => f.type === 'privileged_mode');
       expect(privFindings).toHaveLength(1);
-      expect(privFindings[0]!.severity).toBe('high');
+      expect(privFindings[0]?.severity).toBe('high');
     });
 
     it('should detect exposed ports on all interfaces', async () => {
@@ -172,7 +181,7 @@ describe('SecurityScanner', () => {
 
       const riskyPortFindings = findings.filter((f) => f.type === 'risky_port');
       expect(riskyPortFindings.length).toBeGreaterThan(0);
-      expect(riskyPortFindings[0]!.severity).toBe('high');
+      expect(riskyPortFindings[0]?.severity).toBe('high');
     });
 
     it('should detect Docker socket mount', async () => {
@@ -190,7 +199,7 @@ describe('SecurityScanner', () => {
 
       const dockerSocketFindings = findings.filter((f) => f.type === 'docker_socket');
       expect(dockerSocketFindings.length).toBeGreaterThan(0);
-      expect(dockerSocketFindings[0]!.severity).toBe('high');
+      expect(dockerSocketFindings[0]?.severity).toBe('high');
     });
 
     it('should detect dangerous mounts', async () => {
@@ -208,7 +217,7 @@ describe('SecurityScanner', () => {
 
       const dangerousMountFindings = findings.filter((f) => f.type === 'dangerous_mount');
       expect(dangerousMountFindings.length).toBeGreaterThan(0);
-      expect(dangerousMountFindings[0]!.severity).toBe('critical');
+      expect(dangerousMountFindings[0]?.severity).toBe('critical');
     });
 
     it('should detect missing authentication on Arr apps', async () => {
@@ -226,7 +235,7 @@ describe('SecurityScanner', () => {
 
       const noAuthFindings = findings.filter((f) => f.type === 'no_auth');
       expect(noAuthFindings.length).toBeGreaterThan(0);
-      expect(noAuthFindings[0]!.severity).toBe('high');
+      expect(noAuthFindings[0]?.severity).toBe('high');
     });
 
     it('should not flag Arr apps with authentication', async () => {
@@ -269,7 +278,7 @@ describe('SecurityScanner', () => {
 
       const plexFindings = findings.filter((f) => f.type === 'plex_exposed');
       expect(plexFindings.length).toBeGreaterThan(0);
-      expect(plexFindings[0]!.severity).toBe('medium');
+      expect(plexFindings[0]?.severity).toBe('medium');
     });
 
     it('should detect missing restart policy', async () => {
@@ -286,7 +295,7 @@ describe('SecurityScanner', () => {
 
       const restartFindings = findings.filter((f) => f.type === 'no_restart_policy');
       expect(restartFindings.length).toBeGreaterThan(0);
-      expect(restartFindings[0]!.severity).toBe('low');
+      expect(restartFindings[0]?.severity).toBe('low');
     });
   });
 
@@ -475,7 +484,7 @@ describe('SecurityScanner', () => {
       const findings = scanner.getLatestFindings();
 
       // Critical findings should come first
-      const firstFindingSeverity = findings[0]!.severity;
+      const firstFindingSeverity = findings[0]?.severity;
       expect(['critical', 'high']).toContain(firstFindingSeverity);
     });
   });

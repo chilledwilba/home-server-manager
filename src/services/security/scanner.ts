@@ -1,3 +1,4 @@
+// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
 import type Database from 'better-sqlite3';
 import type { Server as SocketServer } from 'socket.io';
 import { createLogger } from '../../utils/logger.js';
@@ -277,7 +278,7 @@ export class SecurityScanner {
       message: row.message,
       recommendation: row.recommendation,
       cve: row.cve,
-      fixed: row.fixed,
+      fixed: Boolean(row.fixed),
     }));
   }
 
