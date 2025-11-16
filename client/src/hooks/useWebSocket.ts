@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import io, { type Socket } from 'socket.io-client';
+import { toast } from 'sonner';
 
 interface WebSocketMessage {
   type: string;
@@ -25,12 +26,16 @@ export function useWebSocket(url: string = 'http://localhost:3100') {
 
     // Connection handlers
     socket.on('connect', () => {
-      console.log('WebSocket connected');
+      toast.success('Connected to server', {
+        description: 'Real-time updates are active',
+      });
       setConnected(true);
     });
 
     socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
+      toast.warning('Disconnected from server', {
+        description: 'Trying to reconnect...',
+      });
       setConnected(false);
     });
 

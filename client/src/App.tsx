@@ -1,5 +1,6 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout/Layout';
+import { Toaster } from './components/ui/sonner';
 import { Alerts } from './pages/Alerts';
 import { ArrMonitoring } from './pages/ArrMonitoring';
 import { Containers } from './pages/Containers';
@@ -23,6 +24,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
+      <Toaster />
     </Router>
   );
 }
