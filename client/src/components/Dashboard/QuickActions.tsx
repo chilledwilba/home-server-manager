@@ -1,4 +1,4 @@
-import { RefreshCw, AlertCircle, Settings, Shield } from 'lucide-react';
+import { AlertCircle, RefreshCw, Settings, Shield } from 'lucide-react';
 
 export function QuickActions() {
   return (

@@ -1,6 +1,6 @@
 import { Container } from 'lucide-react';
-import { useContainers } from '../hooks/useMetrics';
 import { ContainerGrid } from '../components/Dashboard/ContainerGrid';
+import { useContainers } from '../hooks/useMetrics';
 import type { ContainerInfo } from '../lib/types';
 
 export function Containers() {

@@ -1,6 +1,6 @@
 import { HardDrive } from 'lucide-react';
-import { usePools } from '../hooks/useMetrics';
 import { PoolStatus } from '../components/Dashboard/PoolStatus';
+import { usePools } from '../hooks/useMetrics';
 import type { Pool } from '../lib/types';
 
 export function Pools() {

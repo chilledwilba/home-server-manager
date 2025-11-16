@@ -1,7 +1,7 @@
-import { ReactNode, useState } from 'react';
+import { type ReactNode, useState } from 'react';
+import { ConnectionStatus } from './ConnectionStatus';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
-import { ConnectionStatus } from './ConnectionStatus';
 
 interface LayoutProps {
   children: ReactNode;

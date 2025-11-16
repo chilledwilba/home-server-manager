@@ -1,6 +1,6 @@
 import { Bell } from 'lucide-react';
-import { useAlerts } from '../hooks/useAlerts';
 import { AlertFeed } from '../components/Dashboard/AlertFeed';
+import { useAlerts } from '../hooks/useAlerts';
 import type { Alert } from '../lib/types';
 
 export function Alerts() {

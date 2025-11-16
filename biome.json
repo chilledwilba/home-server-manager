@@ -1,7 +1,19 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": {
-    "enabled": true
+  "$schema": "https://biomejs.dev/schemas/2.3.5/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": true
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "formatter": {
     "enabled": true,
@@ -9,8 +21,7 @@
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 100,
-    "lineEnding": "lf",
-    "ignore": ["dist", "coverage", "node_modules"]
+    "lineEnding": "lf"
   },
   "linter": {
     "enabled": true,
@@ -21,27 +32,52 @@
       },
       "correctness": {
         "noUnusedVariables": "error",
-        "noUnusedImports": "error"
+        "noUnusedImports": "error",
+        "useExhaustiveDependencies": "warn",
+        "useHookAtTopLevel": "error"
       },
       "style": {
         "useConst": "error",
         "useTemplate": "error",
-        "noVar": "error"
+        "useImportType": "error",
+        "noNonNullAssertion": "error",
+        "useBlockStatements": "error",
+        "useSingleVarDeclarator": "error"
       },
       "suspicious": {
         "noExplicitAny": "error",
         "noDebugger": "error",
-        "noConsoleLog": "warn"
+        "noVar": "error",
+        "noDoubleEquals": "error",
+        "noConsole": {
+          "level": "warn",
+          "options": {
+            "allow": ["warn", "error"]
+          }
+        },
+        "noDuplicateElseIf": "error"
       }
-    },
-    "ignore": ["dist", "coverage", "node_modules"]
+    }
   },
   "javascript": {
     "formatter": {
       "quoteStyle": "single",
       "semicolons": "always",
       "trailingCommas": "all",
-      "arrowParentheses": "always"
+      "arrowParentheses": "always",
+      "bracketSpacing": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["tests/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "warn"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { formatRelativeTime, getSeverityColor } from '../../lib/utils';
 
 interface Alert {

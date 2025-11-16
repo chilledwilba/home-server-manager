@@ -1,4 +1,4 @@
-import { HardDrive, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, HardDrive, XCircle } from 'lucide-react';
 import { formatBytes } from '../../lib/utils';
 
 interface Pool {

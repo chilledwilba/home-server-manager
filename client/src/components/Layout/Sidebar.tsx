@@ -1,13 +1,13 @@
-import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  HardDrive,
-  Container,
-  Bell,
-  Shield,
-  Settings,
   Activity,
+  Bell,
+  Container,
+  HardDrive,
+  LayoutDashboard,
+  Settings,
+  Shield,
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
 interface SidebarProps {
   isOpen: boolean;

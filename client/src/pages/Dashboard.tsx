@@ -1,12 +1,12 @@
-import { Activity, Server, HardDrive, Shield, Bell } from 'lucide-react';
-import { useMetrics, usePools, useContainers, useSecurityStatus } from '../hooks/useMetrics';
-import { useAlerts } from '../hooks/useAlerts';
-import { PoolStatus } from '../components/Dashboard/PoolStatus';
-import { SystemMetrics } from '../components/Dashboard/SystemMetrics';
-import { ContainerGrid } from '../components/Dashboard/ContainerGrid';
+import { Activity, Bell, HardDrive, Server, Shield } from 'lucide-react';
 import { AlertFeed } from '../components/Dashboard/AlertFeed';
+import { ContainerGrid } from '../components/Dashboard/ContainerGrid';
+import { PoolStatus } from '../components/Dashboard/PoolStatus';
 import { QuickActions } from '../components/Dashboard/QuickActions';
-import type { Pool, ContainerInfo, Alert, SystemMetrics as SystemMetricsType } from '../lib/types';
+import { SystemMetrics } from '../components/Dashboard/SystemMetrics';
+import { useAlerts } from '../hooks/useAlerts';
+import { useContainers, useMetrics, usePools, useSecurityStatus } from '../hooks/useMetrics';
+import type { Alert, ContainerInfo, Pool, SystemMetrics as SystemMetricsType } from '../lib/types';
 
 export function Dashboard() {
   const { data: metricsData, isLoading: metricsLoading } = useMetrics();

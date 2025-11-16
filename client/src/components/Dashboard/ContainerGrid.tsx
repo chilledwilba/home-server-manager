@@ -1,4 +1,4 @@
-import { Container, Play, Square, RefreshCw } from 'lucide-react';
+import { Container, Play, RefreshCw, Square } from 'lucide-react';
 import { formatRelativeTime } from '../../lib/utils';
 
 interface ContainerInfo {
