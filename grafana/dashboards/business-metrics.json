@@ -1,0 +1,145 @@
+{
+  "dashboard": {
+    "title": "Home Server Monitor - Business Metrics",
+    "tags": ["business", "zfs", "docker", "alerts"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "ZFS Pool Health",
+        "type": "stat",
+        "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "home_server_zfs_pool_health",
+            "legendFormat": "{{pool_name}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Docker Container Status",
+        "type": "stat",
+        "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+        "targets": [
+          {
+            "expr": "home_server_docker_container_status",
+            "legendFormat": "{{container_name}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Active Alerts by Severity",
+        "type": "piechart",
+        "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+        "targets": [
+          {
+            "expr": "sum by(severity) (home_server_active_alerts_total)",
+            "legendFormat": "{{severity}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "ZFS Pool Capacity",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+        "targets": [
+          {
+            "expr": "home_server_zfs_pool_capacity_bytes{type='used'}",
+            "legendFormat": "{{pool_name}} - Used",
+            "refId": "A"
+          },
+          {
+            "expr": "home_server_zfs_pool_capacity_bytes{type='size'}",
+            "legendFormat": "{{pool_name}} - Total",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [{ "format": "bytes", "label": "Capacity" }, { "format": "short" }]
+      },
+      {
+        "id": 5,
+        "title": "Container Resource Usage",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+        "targets": [
+          {
+            "expr": "home_server_docker_container_cpu_percent",
+            "legendFormat": "{{container_name}} - CPU",
+            "refId": "A"
+          },
+          {
+            "expr": "home_server_docker_container_memory_bytes{type='usage'} / home_server_docker_container_memory_bytes{type='limit'} * 100",
+            "legendFormat": "{{container_name}} - Memory %",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [{ "format": "percent", "label": "Usage" }, { "format": "short" }]
+      },
+      {
+        "id": 6,
+        "title": "Disk Temperature",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+        "targets": [
+          {
+            "expr": "home_server_disk_temperature_celsius",
+            "legendFormat": "{{disk_name}} ({{pool_name}})",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [{ "format": "celsius", "label": "Temperature" }, { "format": "short" }],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": { "params": [50], "type": "gt" },
+              "query": { "params": ["A", "5m", "now"] },
+              "reducer": { "params": [], "type": "avg" },
+              "type": "query"
+            }
+          ],
+          "name": "High Disk Temperature"
+        }
+      },
+      {
+        "id": 7,
+        "title": "Disk Health Indicators",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+        "targets": [
+          {
+            "expr": "home_server_disk_reallocated_sectors_total",
+            "legendFormat": "{{disk_name}} - Reallocated Sectors",
+            "refId": "A"
+          },
+          {
+            "expr": "home_server_disk_failure_prediction_score",
+            "legendFormat": "{{disk_name}} - Failure Risk",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [{ "format": "short", "label": "Count / Score" }, { "format": "short" }]
+      }
+    ]
+  }
+}

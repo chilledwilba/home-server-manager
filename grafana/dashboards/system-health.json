@@ -1,0 +1,125 @@
+{
+  "dashboard": {
+    "title": "Home Server Monitor - System Health",
+    "tags": ["system", "health", "resources"],
+    "timezone": "browser",
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Process Memory Usage",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "home_server_nodejs_heap_size_used_bytes",
+            "legendFormat": "Heap Used",
+            "refId": "A"
+          },
+          {
+            "expr": "home_server_nodejs_heap_size_total_bytes",
+            "legendFormat": "Heap Total",
+            "refId": "B"
+          },
+          {
+            "expr": "home_server_nodejs_external_memory_bytes",
+            "legendFormat": "External Memory",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [{ "format": "bytes", "label": "Memory" }, { "format": "short" }]
+      },
+      {
+        "id": 2,
+        "title": "GC Duration",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "expr": "rate(home_server_nodejs_gc_duration_seconds_sum[5m])",
+            "legendFormat": "GC Time",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [{ "format": "s", "label": "Duration" }, { "format": "short" }]
+      },
+      {
+        "id": 3,
+        "title": "Event Loop Lag",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "expr": "home_server_nodejs_eventloop_lag_seconds",
+            "legendFormat": "Event Loop Lag",
+            "refId": "A"
+          },
+          {
+            "expr": "home_server_nodejs_eventloop_lag_p99_seconds",
+            "legendFormat": "p99 Lag",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [{ "format": "s", "label": "Lag" }, { "format": "short" }]
+      },
+      {
+        "id": 4,
+        "title": "Active Handles and Requests",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "targets": [
+          {
+            "expr": "home_server_nodejs_active_handles_total",
+            "legendFormat": "Active Handles",
+            "refId": "A"
+          },
+          {
+            "expr": "home_server_nodejs_active_requests_total",
+            "legendFormat": "Active Requests",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [{ "format": "short", "label": "Count" }, { "format": "short" }]
+      },
+      {
+        "id": 5,
+        "title": "Service Availability",
+        "type": "stat",
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 16 },
+        "targets": [
+          {
+            "expr": "home_server_service_available",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "orientation": "horizontal"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Active Alerts",
+        "type": "stat",
+        "gridPos": { "h": 4, "w": 6, "x": 6, "y": 16 },
+        "targets": [
+          {
+            "expr": "sum(home_server_active_alerts_total)",
+            "legendFormat": "Total Alerts",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area"
+        }
+      }
+    ]
+  }
+}

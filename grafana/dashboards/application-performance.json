@@ -1,0 +1,113 @@
+{
+  "dashboard": {
+    "title": "Home Server Monitor - Application Performance",
+    "tags": ["application", "performance", "http"],
+    "timezone": "browser",
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Request Rate",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "expr": "rate(home_server_http_requests_total[5m])",
+            "legendFormat": "{{method}} {{route}} ({{status_code}})",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [{ "format": "reqps", "label": "Requests/sec" }, { "format": "short" }]
+      },
+      {
+        "id": 2,
+        "title": "HTTP Request Duration (p95)",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(home_server_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{method}} {{route}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [{ "format": "s", "label": "Duration" }, { "format": "short" }]
+      },
+      {
+        "id": 3,
+        "title": "HTTP Requests by Status Code",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "expr": "rate(home_server_http_requests_total[5m])",
+            "legendFormat": "{{status_code}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [{ "format": "reqps", "label": "Requests/sec" }, { "format": "short" }]
+      },
+      {
+        "id": 4,
+        "title": "HTTP Request Duration Percentiles",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(home_server_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.90, rate(home_server_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p90",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(home_server_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95",
+            "refId": "C"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(home_server_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99",
+            "refId": "D"
+          }
+        ],
+        "yaxes": [{ "format": "s", "label": "Duration" }, { "format": "short" }]
+      },
+      {
+        "id": 5,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+        "targets": [
+          {
+            "expr": "rate(app_errors_total[5m])",
+            "legendFormat": "{{severity}} - {{code}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [{ "format": "errps", "label": "Errors/sec" }, { "format": "short" }]
+      },
+      {
+        "id": 6,
+        "title": "Active WebSocket Connections",
+        "type": "graph",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+        "targets": [
+          {
+            "expr": "home_server_websocket_connections_total",
+            "legendFormat": "{{room}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [{ "format": "short", "label": "Connections" }, { "format": "short" }]
+      }
+    ]
+  }
+}

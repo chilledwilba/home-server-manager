@@ -1,0 +1,96 @@
+# Performance Budgets for Home Server Monitor
+# These budgets define acceptable performance thresholds
+# Alerts will be triggered when budgets are exceeded
+
+# HTTP Request Performance Budgets
+http:
+  # Maximum acceptable request duration (95th percentile)
+  request_duration_p95: 500ms
+  request_duration_p99: 1s
+
+  # Maximum requests per second (capacity planning)
+  max_requests_per_second: 1000
+
+  # Error rate threshold (percentage of total requests)
+  max_error_rate: 1%
+
+# Database Query Performance Budgets
+database:
+  # Maximum acceptable query duration (95th percentile)
+  query_duration_p95: 100ms
+  query_duration_p99: 500ms
+
+  # Maximum queries per second
+  max_queries_per_second: 500
+
+  # Transaction duration
+  transaction_duration_p95: 200ms
+
+# Memory and Resource Budgets
+resources:
+  # Heap memory usage threshold
+  max_heap_usage_percent: 90%
+
+  # Event loop lag threshold
+  max_event_loop_lag: 100ms
+
+  # Active handles threshold
+  max_active_handles: 1000
+
+  # GC pause time threshold
+  max_gc_pause: 50ms
+
+# WebSocket Connection Budgets
+websocket:
+  # Maximum concurrent connections
+  max_connections_total: 1000
+  max_connections_per_room: 200
+
+  # Connection duration percentiles
+  connection_duration_p95: 10s
+
+# Business Metric Budgets
+business:
+  # Alert response time
+  max_alert_acknowledgment_time: 5m
+
+  # Monitoring data freshness
+  max_data_staleness: 1m
+
+  # Service availability target
+  min_service_availability: 99.9%
+
+# Asset Size Budgets (for client builds)
+assets:
+  # Maximum bundle sizes
+  max_js_bundle_size: 500kb
+  max_css_bundle_size: 100kb
+
+  # Maximum total page weight
+  max_page_weight: 1mb
+
+# Validation rules
+validation:
+  # All HTTP p95 latencies must be under budget
+  - metric: home_server_http_request_duration_seconds_bucket
+    percentile: 0.95
+    threshold: 0.5
+    severity: warning
+
+  # Database queries must be under budget
+  - metric: home_server_db_query_duration_seconds_bucket
+    percentile: 0.95
+    threshold: 0.1
+    severity: warning
+
+  # Error rate must be below threshold
+  - metric: app_errors_total
+    rate: 5m
+    threshold: 0.01
+    severity: critical
+
+  # Memory usage must be under threshold
+  - metric: home_server_nodejs_heap_size_used_bytes
+    ratio_of: home_server_nodejs_heap_size_total_bytes
+    threshold: 0.9
+    severity: warning
