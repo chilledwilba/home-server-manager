@@ -1,0 +1,123 @@
+groups:
+  - name: performance_budgets
+    interval: 30s
+    rules:
+      # HTTP Request Duration Budget
+      - alert: HTTPRequestDurationBudgetExceeded
+        expr: |
+          histogram_quantile(0.95,
+            rate(home_server_http_request_duration_seconds_bucket[5m])
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "HTTP request duration p95 exceeds budget"
+          description: "Route {{ $labels.route }} p95 latency is {{ $value }}s (budget: 0.5s)"
+
+      # Database Query Duration Budget
+      - alert: DatabaseQueryDurationBudgetExceeded
+        expr: |
+          histogram_quantile(0.95,
+            rate(home_server_db_query_duration_seconds_bucket[5m])
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Database query duration p95 exceeds budget"
+          description: "Operation {{ $labels.operation }} on {{ $labels.table }} p95 latency is {{ $value }}s (budget: 0.1s)"
+
+      # Error Rate Budget
+      - alert: ErrorRateBudgetExceeded
+        expr: |
+          rate(app_errors_total[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "Error rate exceeds budget"
+          description: "Error rate is {{ $value }} errors/sec (budget: 0.01 errors/sec)"
+
+      # Memory Usage Budget
+      - alert: MemoryUsageBudgetExceeded
+        expr: |
+          home_server_nodejs_heap_size_used_bytes /
+          home_server_nodejs_heap_size_total_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "Memory usage exceeds budget"
+          description: "Heap usage is {{ $value | humanizePercentage }} (budget: 90%)"
+
+      # WebSocket Connection Budget
+      - alert: WebSocketConnectionBudgetExceeded
+        expr: |
+          home_server_websocket_connections_total{room="total"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: capacity
+        annotations:
+          summary: "WebSocket connections exceed budget"
+          description: "Total WebSocket connections: {{ $value }} (budget: 1000)"
+
+  - name: availability
+    interval: 30s
+    rules:
+      # Service Availability
+      - alert: ServiceDown
+        expr: |
+          home_server_service_available == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service is unavailable"
+          description: "Service {{ $labels.service_name }} is down"
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: |
+          rate(home_server_http_requests_total{status_code=~"5.."}[5m]) /
+          rate(home_server_http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "High HTTP 5xx error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.route }}"
+
+  - name: resource_limits
+    interval: 30s
+    rules:
+      # Event Loop Lag
+      - alert: HighEventLoopLag
+        expr: |
+          home_server_nodejs_eventloop_lag_seconds > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High event loop lag detected"
+          description: "Event loop lag is {{ $value }}s (threshold: 0.1s)"
+
+      # Active Handles
+      - alert: HighActiveHandles
+        expr: |
+          home_server_nodejs_active_handles_total > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "High number of active handles"
+          description: "Active handles: {{ $value }} (threshold: 1000)"
