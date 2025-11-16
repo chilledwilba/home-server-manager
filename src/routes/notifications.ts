@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { NotificationService } from '../services/alerting/notification-service.js';
-import { withService, formatSuccess, extractBody } from '../utils/route-helpers.js';
 import { ExternalServiceError } from '../utils/error-types.js';
+import { extractBody, formatSuccess, withService } from '../utils/route-helpers.js';
 
 /**
  * Notification routes

@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import type { SecurityScanner } from '../../services/security/scanner.js';
 import type { DockerMonitor } from '../../services/monitoring/docker-monitor.js';
 import type { SecurityOrchestrator } from '../../services/security/orchestrator.js';
-import { scannerRoutes } from './scanner.js';
-import { orchestratorRoutes } from './orchestrator.js';
+import type { SecurityScanner } from '../../services/security/scanner.js';
 import { fail2banRoutes } from './fail2ban.js';
+import { orchestratorRoutes } from './orchestrator.js';
+import { scannerRoutes } from './scanner.js';
 
 /**
  * Security routes aggregator

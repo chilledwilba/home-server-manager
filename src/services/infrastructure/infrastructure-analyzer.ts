@@ -1,6 +1,6 @@
-import { logger } from '../../utils/logger.js';
 import type { PortainerClient } from '../../integrations/portainer/client.js';
-import type { ServiceCatalog, InfrastructureService } from './service-catalog.js';
+import { logger } from '../../utils/logger.js';
+import type { InfrastructureService, ServiceCatalog } from './service-catalog.js';
 
 /**
  * Infrastructure Analyzer

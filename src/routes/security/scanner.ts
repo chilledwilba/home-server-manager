@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import type { SecurityScanner } from '../../services/security/scanner.js';
 import type { DockerMonitor } from '../../services/monitoring/docker-monitor.js';
+import type { SecurityScanner } from '../../services/security/scanner.js';
 import {
-  ServiceUnavailableError,
   ExternalServiceError,
   NotFoundError,
+  ServiceUnavailableError,
 } from '../../utils/error-types.js';
-import { formatSuccess, extractBody } from '../../utils/route-helpers.js';
+import { extractBody, formatSuccess } from '../../utils/route-helpers.js';
 
 /**
  * Security scanner routes

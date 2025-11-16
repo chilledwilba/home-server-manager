@@ -71,7 +71,7 @@ export class PerformanceAnalyzer {
     if (!stats) return null;
 
     const stdDev = this.stats.calculateStdDev('metrics', 'cpu_percent', cutoffTime);
-    const variance = Math.pow(stdDev, 2);
+    const variance = stdDev ** 2;
 
     // Get first and last week averages to determine trend
     const firstWeek = this.db
@@ -143,7 +143,7 @@ export class PerformanceAnalyzer {
     if (!stats) return null;
 
     const stdDev = this.stats.calculateStdDev('metrics', 'ram_percent', cutoffTime);
-    const variance = Math.pow(stdDev, 2);
+    const variance = stdDev ** 2;
 
     return {
       metric: 'Memory Usage',
@@ -185,7 +185,7 @@ export class PerformanceAnalyzer {
       min_value: stats.min,
       max_value: stats.max,
       std_deviation: stdDev,
-      variance: Math.pow(stdDev, 2),
+      variance: stdDev ** 2,
       change_percent: 0,
       analysis: `Storage pools are ${stats.avg.toFixed(1)}% full on average.`,
       recommendations:

@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import type { Server as SocketServer } from 'socket.io';
-import { createLogger } from '../../utils/logger.js';
 import type { UPSStatus } from '../../integrations/ups/nut-client.js';
+import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('ups-persistence');
 

@@ -1,9 +1,9 @@
 import type Database from 'better-sqlite3';
 import type { PortainerClient } from '../../integrations/portainer/client.js';
-import { ServiceCatalog, type InfrastructureService } from './service-catalog.js';
-import { InfrastructurePersistence } from './infrastructure-persistence.js';
-import { InfrastructureAnalyzer } from './infrastructure-analyzer.js';
 import { DeploymentManager, type DeploymentOptions } from './deployment-manager.js';
+import { InfrastructureAnalyzer } from './infrastructure-analyzer.js';
+import { InfrastructurePersistence } from './infrastructure-persistence.js';
+import { type InfrastructureService, ServiceCatalog } from './service-catalog.js';
 
 /**
  * Infrastructure Manager

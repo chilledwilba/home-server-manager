@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { SecurityOrchestrator } from '../../services/security/orchestrator.js';
+import { ExternalServiceError, ServiceUnavailableError } from '../../utils/error-types.js';
 import { createLogger } from '../../utils/logger.js';
-import { ServiceUnavailableError, ExternalServiceError } from '../../utils/error-types.js';
 import { formatSuccess } from '../../utils/route-helpers.js';
 
 const logger = createLogger('security-orchestrator-routes');

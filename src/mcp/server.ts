@@ -2,21 +2,21 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  ListPromptsRequestSchema,
   GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { createLogger } from '../utils/logger.js';
-import { TrueNASClient } from '../integrations/truenas/client.js';
-import { PortainerClient } from '../integrations/portainer/client.js';
-import { getDatabase } from '../db/connection.js';
-import { InfrastructureManager } from '../services/infrastructure/manager.js';
 import type Database from 'better-sqlite3';
+import { getDatabase } from '../db/connection.js';
+import { PortainerClient } from '../integrations/portainer/client.js';
+import { TrueNASClient } from '../integrations/truenas/client.js';
+import { InfrastructureManager } from '../services/infrastructure/manager.js';
+import { createLogger } from '../utils/logger.js';
+import { getPromptContent, promptDefinitions } from './prompt-handlers.js';
+import { getResourceContent, resourceDefinitions } from './resource-handlers.js';
 import { toolDefinitions } from './tool-definitions.js';
-import { resourceDefinitions, getResourceContent } from './resource-handlers.js';
-import { promptDefinitions, getPromptContent } from './prompt-handlers.js';
 import { ToolHandlers } from './tool-handlers.js';
 
 const logger = createLogger('mcp-server');

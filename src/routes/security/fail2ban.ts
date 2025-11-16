@@ -1,14 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { SecurityOrchestrator } from '../../services/security/orchestrator.js';
-import { createLogger } from '../../utils/logger.js';
-import { validateIPAddress } from '../../utils/validation.js';
 import {
-  ServiceUnavailableError,
   DatabaseError,
   ExternalServiceError,
+  ServiceUnavailableError,
   ValidationError,
 } from '../../utils/error-types.js';
-import { withDatabase, formatSuccess, extractBody } from '../../utils/route-helpers.js';
+import { createLogger } from '../../utils/logger.js';
+import { extractBody, formatSuccess, withDatabase } from '../../utils/route-helpers.js';
+import { validateIPAddress } from '../../utils/validation.js';
 
 const logger = createLogger('security-fail2ban-routes');
 

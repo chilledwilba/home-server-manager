@@ -1,6 +1,6 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { AIInsightsService } from '../../services/ai/insights-service.js';
 import type Database from 'better-sqlite3';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { AIInsightsService } from '../../services/ai/insights-service.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('ai-anomalies-routes');

@@ -1,6 +1,6 @@
-import { createLogger } from '../../utils/logger.js';
 import type Database from 'better-sqlite3';
 import type { PortainerClient } from '../../integrations/portainer/client.js';
+import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('remediation');
 

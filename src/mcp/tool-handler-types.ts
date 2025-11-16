@@ -1,7 +1,7 @@
-import type { TrueNASClient } from '../integrations/truenas/client.js';
-import type { PortainerClient } from '../integrations/portainer/client.js';
-import type { InfrastructureManager } from '../services/infrastructure/manager.js';
 import type Database from 'better-sqlite3';
+import type { PortainerClient } from '../integrations/portainer/client.js';
+import type { TrueNASClient } from '../integrations/truenas/client.js';
+import type { InfrastructureManager } from '../services/infrastructure/manager.js';
 
 export interface MCPConfig {
   truenas?: TrueNASClient;

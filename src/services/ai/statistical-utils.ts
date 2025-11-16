@@ -20,7 +20,7 @@ export class StatisticalUtils {
     if (data.length === 0) return 0;
 
     const mean = data.reduce((sum, d) => sum + d.value, 0) / data.length;
-    const variance = data.reduce((sum, d) => sum + Math.pow(d.value - mean, 2), 0) / data.length;
+    const variance = data.reduce((sum, d) => sum + (d.value - mean) ** 2, 0) / data.length;
 
     return Math.sqrt(variance);
   }

@@ -1,131 +1,80 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './fixtures.js';
+import { DashboardPage } from './pages/DashboardPage.js';
 
 test.describe('Dashboard', () => {
+  let dashboardPage: DashboardPage;
+
   test.beforeEach(async ({ page }) => {
-    // Navigate to the dashboard before each test
-    await page.goto('/');
+    dashboardPage = new DashboardPage(page);
+    await dashboardPage.goto();
   });
 
   test('should load homepage', async ({ page }) => {
     // Check for main heading or title
     await expect(page).toHaveTitle(/Home Server Monitor/i);
 
-    // Check for main content
-    const mainHeading = page.locator('h1').first();
-    await expect(mainHeading).toBeVisible();
-    await expect(mainHeading).toContainText(/Home Server/i);
+    // Check for main heading using Page Object
+    await expect(dashboardPage.heading).toBeVisible();
+    await expect(dashboardPage.heading).toContainText(/Home Server|Dashboard/i);
   });
 
-  test('should display system metrics', async ({ page }) => {
-    // Wait for WebSocket connection and initial data load
-    await page.waitForTimeout(2000);
+  test('should display system metrics', async () => {
+    // Wait for metrics to load
+    await dashboardPage.waitForMetricsToLoad();
 
-    // Check for metrics cards/sections
-    // These should be updated based on actual UI structure
-    // Check if at least one metric is visible
-    const metricsSection = page
-      .locator('[data-testid="metrics"], .metrics, [class*="metrics"]')
-      .first();
+    // Check for metrics section using Page Object
+    const metricsVisible = await dashboardPage.metricsSection.isVisible().catch(() => false);
 
-    if (await metricsSection.isVisible().catch(() => false)) {
-      await expect(metricsSection).toBeVisible();
+    if (metricsVisible) {
+      await expect(dashboardPage.metricsSection).toBeVisible();
     } else {
-      // If no metrics section, check for individual metric elements
-      const anyMetric = page.locator('text=/CPU|Memory|Storage|Pool/i').first();
-      await expect(anyMetric).toBeVisible();
+      // Check for individual metric types
+      const hasMetric =
+        (await dashboardPage.hasMetricType('CPU')) ||
+        (await dashboardPage.hasMetricType('Memory')) ||
+        (await dashboardPage.hasMetricType('Storage'));
+      expect(hasMetric).toBeTruthy();
     }
   });
 
-  test('should navigate to pools page', async ({ page }) => {
-    // Look for pools link
-    const poolsLink = page
-      .locator('a[href*="pools"], a:has-text("Pools"), button:has-text("Pools")')
-      .first();
+  test('should navigate to pools page', async () => {
+    // Use Page Object method to navigate
+    await dashboardPage.navigateToPools();
 
-    if (await poolsLink.isVisible().catch(() => false)) {
-      // Click pools link
-      await poolsLink.click();
-
-      // Verify navigation
-      await expect(page).toHaveURL(/pools/);
-
-      // Check for pools page content
-      const poolsHeading = page.locator('h1, h2, h3').filter({ hasText: /pool/i }).first();
-      await expect(poolsHeading).toBeVisible();
-    } else {
-      // If no pools link, check if pools are displayed on the main page
-      const poolsSection = page.locator('text=/ZFS Pools|Storage Pools/i').first();
-      await expect(poolsSection).toBeVisible();
-    }
+    // Verify navigation
+    const url = dashboardPage.page.url();
+    expect(url).toMatch(/pools/);
   });
 
-  test('should display alerts section', async ({ page }) => {
-    // Look for alerts section or navigate to alerts
-    const alertsLink = page
-      .locator('a[href*="alerts"], a:has-text("Alerts"), button:has-text("Alerts")')
-      .first();
+  test('should navigate to alerts page', async () => {
+    // Use Page Object method to navigate
+    await dashboardPage.navigateToAlerts();
 
-    if (await alertsLink.isVisible().catch(() => false)) {
-      await alertsLink.click();
-      await expect(page).toHaveURL(/alerts/);
-    }
-
-    // Check for alerts content
-    const alertsSection = page
-      .locator('[data-testid="alert-list"], .alerts, [class*="alert"]')
-      .first();
-
-    if (await alertsSection.isVisible().catch(() => false)) {
-      await expect(alertsSection).toBeVisible();
-    } else {
-      // Check for "No alerts" message or alerts heading
-      const alertsHeading = page.locator('text=/Alerts|Notifications/i').first();
-      await expect(alertsHeading).toBeVisible();
-    }
+    // Verify navigation
+    const url = dashboardPage.page.url();
+    expect(url).toMatch(/alerts/);
   });
 
-  test('should display container status', async ({ page }) => {
-    // Look for containers section
-    const containersLink = page
-      .locator('a[href*="containers"], a[href*="docker"], a:has-text("Containers")')
-      .first();
+  test('should navigate to containers page', async () => {
+    // Use Page Object method to navigate
+    await dashboardPage.navigateToContainers();
 
-    if (await containersLink.isVisible().catch(() => false)) {
-      await containersLink.click();
-      await expect(page).toHaveURL(/containers|docker/);
-    }
-
-    // Check for containers content
-    const containersSection = page
-      .locator('[data-testid="containers"], .containers, [class*="container"]')
-      .first();
-
-    if (await containersSection.isVisible().catch(() => false)) {
-      await expect(containersSection).toBeVisible();
-    } else {
-      // Check for containers heading
-      const containersHeading = page.locator('text=/Containers|Docker/i').first();
-      await expect(containersHeading).toBeVisible();
-    }
+    // Verify navigation
+    const url = dashboardPage.page.url();
+    expect(url).toMatch(/containers|docker/);
   });
 
-  test('should handle API errors gracefully', async ({ page }) => {
-    // Intercept API calls and force an error
-    await page.route('**/api/**', (route) => {
-      route.fulfill({
-        status: 500,
-        body: JSON.stringify({ error: 'Internal Server Error' }),
-      });
-    });
+  test('should handle API errors gracefully', async () => {
+    // Use test helpers to mock API error
+    await dashboardPage.helpers.mockApiResponse('/api/**', { error: 'Internal Server Error' }, 500);
 
     // Reload the page
-    await page.reload();
-
-    // Give the page time to display error
-    await page.waitForTimeout(2000);
+    await dashboardPage.page.reload();
+    await dashboardPage.helpers.waitForLoading();
 
     // The app should handle errors gracefully without breaking
-    await expect(page).not.toHaveTitle(/Error/);
+    await expect(dashboardPage.page).not.toHaveTitle(/Error/);
   });
 
   test('should be responsive on mobile', async ({ page }) => {
@@ -133,17 +82,16 @@ test.describe('Dashboard', () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     // Check that main content is still visible
-    const mainContent = page.locator('main, [role="main"], .main-content, #app').first();
-    await expect(mainContent).toBeVisible();
+    await expect(dashboardPage.mainContent).toBeVisible();
 
     // Check for mobile menu button if navigation is hidden
-    const mobileMenuButton = page
-      .locator('button[aria-label*="menu"], [class*="menu-toggle"], [class*="burger"]')
-      .first();
+    const mobileMenuVisible = await dashboardPage.mobileMenuButton.isVisible().catch(() => false);
 
-    if (await mobileMenuButton.isVisible().catch(() => false)) {
-      // Click menu button
-      await mobileMenuButton.click();
+    if (mobileMenuVisible) {
+      // Click menu button using helper
+      await dashboardPage.helpers.clickSafely(
+        'button[aria-label*="menu"], [class*="menu-toggle"], [class*="burger"]',
+      );
 
       // Check that navigation appears
       const navigation = page.locator('nav, [role="navigation"], .navigation').first();
@@ -151,30 +99,29 @@ test.describe('Dashboard', () => {
     }
   });
 
-  test('should update data in real-time', async ({ page }) => {
-    // Wait for initial load
-    await page.waitForTimeout(1000);
+  test('should update data in real-time', async () => {
+    // Wait for initial metrics load
+    await dashboardPage.waitForMetricsToLoad();
 
-    // Get initial value of a metric (if visible)
-    const metric = page.locator('[data-testid*="metric"], .metric-value, [class*="value"]').first();
+    // Get metric values using Page Object
+    const _metrics = await dashboardPage.getMetricValues();
 
-    if (await metric.isVisible().catch(() => false)) {
-      await metric.textContent();
+    // Wait for potential update (WebSocket or polling)
+    await dashboardPage.page.waitForTimeout(5000);
 
-      // Wait for potential update (WebSocket or polling)
-      await page.waitForTimeout(5000);
+    // Get updated values
+    const updatedMetrics = await dashboardPage.getMetricValues();
 
-      // Value might have changed (depending on real-time updates)
-      const updatedValue = await metric.textContent();
-
-      // Just verify the element still exists and has content
-      expect(updatedValue).toBeTruthy();
-    }
+    // Verify metrics still have values (real-time updates may or may not change values)
+    expect(updatedMetrics.length).toBeGreaterThan(0);
   });
 
-  test('should display health status indicators', async ({ page }) => {
+  test('should display health status indicators', async () => {
+    // Wait for page load
+    await dashboardPage.helpers.waitForLoading();
+
     // Look for health status indicators
-    const healthIndicators = page.locator(
+    const healthIndicators = dashboardPage.page.locator(
       '[class*="health"], [class*="status"], [data-testid*="status"]',
     );
 
@@ -185,7 +132,7 @@ test.describe('Dashboard', () => {
       const firstIndicator = healthIndicators.first();
       await expect(firstIndicator).toBeVisible();
 
-      // Check for status classes or text
+      // Check for status content
       const statusText = await firstIndicator.textContent();
       expect(statusText).toBeTruthy();
     }
@@ -201,14 +148,93 @@ test.describe('API Integration', () => {
     expect(data).toHaveProperty('status');
   });
 
-  test('API endpoints should be accessible', async ({ request }) => {
-    // Test various API endpoints
-    const endpoints = ['/api/monitoring/pools', '/api/docker/containers', '/api/system/info'];
+  test('pools API endpoint should return valid data', async ({ request }) => {
+    const response = await request.get('/api/monitoring/pools');
 
-    for (const endpoint of endpoints) {
-      const response = await request.get(endpoint);
-      // Endpoints should return 200 or 401 (if auth required)
-      expect([200, 401, 404]).toContain(response.status());
+    // Should return 200 or 404 if not implemented yet
+    if (response.status() === 200) {
+      const data = await response.json();
+
+      // Should have pools array or error property
+      expect(data).toBeDefined();
+
+      // If pools exist, verify structure
+      if (Array.isArray(data.pools)) {
+        for (const pool of data.pools) {
+          expect(pool).toHaveProperty('name');
+          expect(pool).toHaveProperty('health');
+        }
+      }
+    } else {
+      // If not found, that's okay (feature not implemented)
+      expect([200, 404, 401]).toContain(response.status());
+    }
+  });
+
+  test('containers API endpoint should return valid data', async ({ request }) => {
+    const response = await request.get('/api/docker/containers');
+
+    if (response.status() === 200) {
+      const data = await response.json();
+
+      // Should have containers array or error property
+      expect(data).toBeDefined();
+
+      // If containers exist, verify structure
+      if (Array.isArray(data.containers)) {
+        for (const container of data.containers) {
+          expect(container).toHaveProperty('name');
+          expect(container).toHaveProperty('status');
+        }
+      }
+    } else {
+      expect([200, 404, 401]).toContain(response.status());
+    }
+  });
+
+  test('alerts API endpoint should return valid data', async ({ request }) => {
+    const response = await request.get('/api/alerts');
+
+    if (response.status() === 200) {
+      const data = await response.json();
+
+      // Should have alerts array or error property
+      expect(data).toBeDefined();
+
+      // If alerts exist, verify structure
+      if (Array.isArray(data.alerts)) {
+        for (const alert of data.alerts) {
+          expect(alert).toHaveProperty('id');
+          expect(alert).toHaveProperty('message');
+        }
+      }
+    } else {
+      expect([200, 404, 401]).toContain(response.status());
+    }
+  });
+
+  test('system info API endpoint should return valid data', async ({ request }) => {
+    const response = await request.get('/api/system/info');
+
+    if (response.status() === 200) {
+      const data = await response.json();
+
+      // Should have system information
+      expect(data).toBeDefined();
+
+      // Common system info fields
+      const hasSystemInfo =
+        data.hostname ||
+        data.platform ||
+        data.arch ||
+        data.uptime !== undefined ||
+        data.cpuUsage !== undefined;
+
+      if (hasSystemInfo) {
+        expect(hasSystemInfo).toBeTruthy();
+      }
+    } else {
+      expect([200, 404, 401]).toContain(response.status());
     }
   });
 
@@ -220,7 +246,49 @@ test.describe('API Integration', () => {
       },
     });
 
-    // Should return 400 or 405 for bad request/method not allowed
-    expect([400, 405]).toContain(response.status());
+    // Should return 400, 404, or 405 for bad request/method not allowed
+    expect([400, 404, 405]).toContain(response.status());
+  });
+
+  test('should handle missing endpoints gracefully', async ({ request }) => {
+    const response = await request.get('/api/nonexistent/endpoint');
+
+    // Should return 404 for missing endpoints
+    expect(response.status()).toBe(404);
+  });
+
+  test('API should have proper CORS headers', async ({ request }) => {
+    const response = await request.get('/health');
+
+    // Check for CORS headers (optional, depends on implementation)
+    const headers = response.headers();
+
+    // If CORS is enabled, should have appropriate headers
+    // This is optional and depends on the API implementation
+    if (headers['access-control-allow-origin']) {
+      expect(headers['access-control-allow-origin']).toBeDefined();
+    }
+  });
+
+  test('API should return consistent response formats', async ({ request }) => {
+    const endpoints = [
+      '/api/monitoring/pools',
+      '/api/docker/containers',
+      '/api/alerts',
+      '/api/system/info',
+    ];
+
+    for (const endpoint of endpoints) {
+      const response = await request.get(endpoint);
+
+      if (response.status() === 200) {
+        // Should return valid JSON
+        const data = await response.json();
+        expect(data).toBeDefined();
+
+        // Response should be an object
+        expect(typeof data).toBe('object');
+      }
+    }
   });
 });

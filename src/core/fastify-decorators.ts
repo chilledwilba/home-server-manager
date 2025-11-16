@@ -1,6 +1,6 @@
+import type Database from 'better-sqlite3';
 import type { FastifyInstance } from 'fastify';
 import type { ServiceContainer } from './service-container.js';
-import type Database from 'better-sqlite3';
 
 /**
  * Type-safe Fastify instance with decorators

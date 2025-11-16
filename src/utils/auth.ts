@@ -1,5 +1,5 @@
-import type { FastifyRequest, FastifyReply } from 'fastify';
 import { URL } from 'node:url';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { logger } from './logger.js';
 
 /**

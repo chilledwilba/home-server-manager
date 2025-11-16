@@ -1,5 +1,5 @@
-import { createLogger } from '../../utils/logger.js';
 import type Database from 'better-sqlite3';
+import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('notifications');
 

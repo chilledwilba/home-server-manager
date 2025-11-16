@@ -82,14 +82,15 @@ export class ArrClient {
       severity: 'info' | 'warning' | 'error';
     }>
   > {
-    const health = await this.request<
-      Array<{
-        source: string;
-        type: string;
-        message: string;
-        wikiUrl?: string;
-      }>
-    >('/health');
+    const health =
+      await this.request<
+        Array<{
+          source: string;
+          type: string;
+          message: string;
+          wikiUrl?: string;
+        }>
+      >('/health');
 
     return health.map((issue) => ({
       app: this.name,
@@ -164,14 +165,15 @@ export class ArrClient {
       percentUsed: number;
     }>
   > {
-    const diskSpace = await this.request<
-      Array<{
-        path: string;
-        label: string;
-        freeSpace: number;
-        totalSpace: number;
-      }>
-    >('/diskspace');
+    const diskSpace =
+      await this.request<
+        Array<{
+          path: string;
+          label: string;
+          freeSpace: number;
+          totalSpace: number;
+        }>
+      >('/diskspace');
 
     return diskSpace.map((disk) => ({
       app: this.name,

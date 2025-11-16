@@ -49,7 +49,7 @@ export class SafetyCheck {
    */
   static requiresConfirmation(action: string): boolean {
     const actionLower = action.toLowerCase();
-    return this.DANGEROUS_ACTIONS.some((dangerous) => actionLower.includes(dangerous));
+    return SafetyCheck.DANGEROUS_ACTIONS.some((dangerous) => actionLower.includes(dangerous));
   }
 
   /**
@@ -57,7 +57,7 @@ export class SafetyCheck {
    */
   static isSafeAction(action: string): boolean {
     const actionLower = action.toLowerCase();
-    return this.SAFE_ACTIONS.some((safe) => actionLower.includes(safe));
+    return SafetyCheck.SAFE_ACTIONS.some((safe) => actionLower.includes(safe));
   }
 
   /**
@@ -68,7 +68,7 @@ export class SafetyCheck {
     let safe = true;
 
     // Check for dangerous keywords
-    if (this.requiresConfirmation(action)) {
+    if (SafetyCheck.requiresConfirmation(action)) {
       safe = false;
       warnings.push('This action is potentially destructive');
     }
@@ -76,7 +76,9 @@ export class SafetyCheck {
     // Check for critical service impact
     if (context.container) {
       const containerLower = context.container.toLowerCase();
-      const isCritical = this.CRITICAL_SERVICES.some((service) => containerLower.includes(service));
+      const isCritical = SafetyCheck.CRITICAL_SERVICES.some((service) =>
+        containerLower.includes(service),
+      );
 
       if (isCritical) {
         if (action.includes('stop') || action.includes('restart') || action.includes('remove')) {
@@ -127,7 +129,7 @@ export class SafetyCheck {
     context: ActionContext,
     actionId: string,
   ): string {
-    const validation = this.validateAction(action, context);
+    const validation = SafetyCheck.validateAction(action, context);
 
     let message = '⚠️ ACTION REQUIRES CONFIRMATION ⚠️\n\n';
     message += `Action: ${action}\n`;

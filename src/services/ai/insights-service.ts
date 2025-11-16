@@ -1,13 +1,13 @@
 import type Database from 'better-sqlite3';
 import { OllamaClient } from '../../integrations/ollama/client.js';
 import { createLogger } from '../../utils/logger.js';
-import { StatisticalUtils } from './statistical-utils.js';
-import { InsightsPersistence } from './insights-persistence.js';
 import { AIAnalysis } from './ai-analysis.js';
-import { AnomalyDetector, type AnomalyDetection } from './anomaly-detector.js';
-import { CapacityPredictor, type CapacityPrediction } from './capacity-predictor.js';
-import { CostOptimizer, type CostOptimization } from './cost-optimizer.js';
+import { type AnomalyDetection, AnomalyDetector } from './anomaly-detector.js';
+import { type CapacityPrediction, CapacityPredictor } from './capacity-predictor.js';
+import { type CostOptimization, CostOptimizer } from './cost-optimizer.js';
+import { InsightsPersistence } from './insights-persistence.js';
 import { PerformanceAnalyzer, type PerformanceTrend } from './performance-analyzer.js';
+import { StatisticalUtils } from './statistical-utils.js';
 
 const logger = createLogger('ai-insights');
 

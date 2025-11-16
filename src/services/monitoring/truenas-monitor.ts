@@ -1,8 +1,8 @@
 import type Database from 'better-sqlite3';
 import type { Server as SocketServer } from 'socket.io';
 import type { TrueNASClient } from '../../integrations/truenas/client.js';
-import { DiskFailurePredictor } from './disk-predictor.js';
 import { createLogger } from '../../utils/logger.js';
+import { DiskFailurePredictor } from './disk-predictor.js';
 
 const logger = createLogger('truenas-monitor');
 

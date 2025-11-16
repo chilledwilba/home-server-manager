@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import type { InfrastructureManager } from '../../services/infrastructure/manager.js';
 import { registerAnalysisRoutes } from './analysis.js';
-import { registerServiceRoutes } from './services.js';
 import { registerDeploymentRoutes } from './deployment.js';
 import { registerManagementRoutes } from './management.js';
+import { registerServiceRoutes } from './services.js';
 
 /**
  * Infrastructure routes aggregator

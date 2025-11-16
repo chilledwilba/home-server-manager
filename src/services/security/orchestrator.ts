@@ -3,10 +3,11 @@ import type { Server as SocketServer } from 'socket.io';
 
 // Type for setInterval return value
 type IntervalId = ReturnType<typeof setInterval>;
-import { logger } from '../../utils/logger.js';
-import { CloudflareTunnelClient } from '../../integrations/cloudflare/tunnel-client.js';
+
 import { AuthentikClient } from '../../integrations/authentik/client.js';
+import { CloudflareTunnelClient } from '../../integrations/cloudflare/tunnel-client.js';
 import { Fail2banClient } from '../../integrations/fail2ban/client.js';
+import { logger } from '../../utils/logger.js';
 import { InfrastructureManager } from '../infrastructure/manager.js';
 
 interface SecurityConfig {

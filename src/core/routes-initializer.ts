@@ -1,22 +1,22 @@
-import type { FastifyInstance } from 'fastify';
 import type Database from 'better-sqlite3';
-import type { FastifyWithServices } from './fastify-decorators.js';
-import type { TrueNASMonitor } from '../services/monitoring/truenas-monitor.js';
-import type { DockerMonitor } from '../services/monitoring/docker-monitor.js';
-import type { DiskFailurePredictor } from '../services/monitoring/disk-predictor.js';
-import type { SecurityScanner } from '../services/security/scanner.js';
-import type { SecurityOrchestrator } from '../services/security/orchestrator.js';
-import type { InfrastructureManager } from '../services/infrastructure/manager.js';
-import { monitoringRoutes } from '../routes/monitoring.js';
+import type { FastifyInstance } from 'fastify';
+import { arrRoutes } from '../routes/arr.js';
 import { dockerRoutes } from '../routes/docker.js';
-import { securityRoutes } from '../routes/security/index.js';
-import { zfsRoutes } from '../routes/zfs.js';
+import { featureFlagRoutes } from '../routes/feature-flags.js';
+import { infrastructureRoutes } from '../routes/infrastructure/index.js';
+import { monitoringRoutes } from '../routes/monitoring.js';
 import { notificationRoutes } from '../routes/notifications.js';
 import { remediationRoutes } from '../routes/remediation.js';
-import { arrRoutes } from '../routes/arr.js';
-import { infrastructureRoutes } from '../routes/infrastructure/index.js';
-import { featureFlagRoutes } from '../routes/feature-flags.js';
+import { securityRoutes } from '../routes/security/index.js';
+import { zfsRoutes } from '../routes/zfs.js';
+import type { InfrastructureManager } from '../services/infrastructure/manager.js';
+import type { DiskFailurePredictor } from '../services/monitoring/disk-predictor.js';
+import type { DockerMonitor } from '../services/monitoring/docker-monitor.js';
+import type { TrueNASMonitor } from '../services/monitoring/truenas-monitor.js';
+import type { SecurityOrchestrator } from '../services/security/orchestrator.js';
+import type { SecurityScanner } from '../services/security/scanner.js';
 import { logger } from '../utils/logger.js';
+import type { FastifyWithServices } from './fastify-decorators.js';
 
 /**
  * Register all application routes

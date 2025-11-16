@@ -1,7 +1,7 @@
-import type { ServiceContainer } from '../core/service-container.js';
 import type Database from 'better-sqlite3';
-import type { TrueNASClient } from '../integrations/truenas/client.js';
+import type { ServiceContainer } from '../core/service-container.js';
 import type { PortainerClient } from '../integrations/portainer/client.js';
+import type { TrueNASClient } from '../integrations/truenas/client.js';
 import { createLogger } from '../utils/logger.js';
 import { CircuitBreaker, CircuitState } from './circuit-breaker.js';
 
@@ -209,7 +209,7 @@ export class HealthMonitor {
     this.restartAttempts.set(serviceName, attempts + 1);
 
     // Exponential backoff: 5s, 10s, 20s
-    const backoffDelay = 5000 * Math.pow(2, attempts);
+    const backoffDelay = 5000 * 2 ** attempts;
 
     logger.info(
       { service: serviceName, attempt: attempts + 1, delay: backoffDelay },

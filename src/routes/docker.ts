@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { DockerMonitor } from '../services/monitoring/docker-monitor.js';
-import { formatSuccess, extractParams } from '../utils/route-helpers.js';
 import { ExternalServiceError, NotFoundError } from '../utils/error-types.js';
+import { extractParams, formatSuccess } from '../utils/route-helpers.js';
 
 export async function dockerRoutes(
   fastify: FastifyInstance,

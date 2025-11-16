@@ -1,22 +1,22 @@
-import Fastify from 'fastify';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
-import { ServiceContainer } from './core/service-container.js';
+import Fastify from 'fastify';
+import { swaggerConfig, swaggerUiConfig } from './config/swagger.js';
 import { registerServiceDecorators } from './core/fastify-decorators.js';
-import { createSocketIOServer } from './core/socket-io.js';
-import { getDatabase, closeDatabase } from './db/connection.js';
+import { registerHealthRoutes } from './core/health-routes.js';
 import {
-  registerMiddleware,
-  registerStaticFiles,
   registerErrorHandler,
   registerMetricsEndpoint,
+  registerMiddleware,
+  registerStaticFiles,
 } from './core/middleware-initializer.js';
 import { registerRoutes } from './core/routes-initializer.js';
-import { registerHealthRoutes } from './core/health-routes.js';
+import { ServiceContainer } from './core/service-container.js';
+import { createSocketIOServer } from './core/socket-io.js';
+import { closeDatabase, getDatabase } from './db/connection.js';
+import { addFeatureFlagSupport } from './middleware/feature-flag.js';
 import { HealthMonitor } from './middleware/health-monitor.js';
 import { logger } from './utils/logger.js';
-import { swaggerConfig, swaggerUiConfig } from './config/swagger.js';
-import { addFeatureFlagSupport } from './middleware/feature-flag.js';
 
 /**
  * Build and configure the Fastify server with dependency injection

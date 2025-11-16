@@ -1,5 +1,5 @@
-import { createLogger } from '../../utils/logger.js';
 import type { OllamaClient } from '../../integrations/ollama/client.js';
+import { createLogger } from '../../utils/logger.js';
 import type { AnomalyDetection, CostOptimization } from './insights-service.js';
 
 const logger = createLogger('ai-analysis');

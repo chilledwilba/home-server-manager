@@ -1,5 +1,5 @@
-import type { FastifyRequest, FastifyReply } from 'fastify';
 import { randomUUID } from 'crypto';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('correlation-id');

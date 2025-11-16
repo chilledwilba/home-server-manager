@@ -1,16 +1,16 @@
-import { logger } from '../../utils/logger.js';
-import {
-  validateServiceName,
-  validateStackName,
-  validateEnvVars,
-  sanitizeDockerCompose,
-} from '../../utils/validation.js';
-import type { PortainerClient } from '../../integrations/portainer/client.js';
-import type { ServiceCatalog } from './service-catalog.js';
-import type { InfrastructurePersistence } from './infrastructure-persistence.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import type { PortainerClient } from '../../integrations/portainer/client.js';
+import { logger } from '../../utils/logger.js';
+import {
+  sanitizeDockerCompose,
+  validateEnvVars,
+  validateServiceName,
+  validateStackName,
+} from '../../utils/validation.js';
+import type { InfrastructurePersistence } from './infrastructure-persistence.js';
+import type { ServiceCatalog } from './service-catalog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

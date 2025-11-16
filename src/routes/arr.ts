@@ -2,11 +2,11 @@ import type { FastifyInstance } from 'fastify';
 import type { ArrOptimizer } from '../services/arr/arr-optimizer.js';
 import { DatabaseError } from '../utils/error-types.js';
 import {
-  withService,
-  withDatabase,
-  formatSuccess,
   extractParams,
   extractQuery,
+  formatSuccess,
+  withDatabase,
+  withService,
 } from '../utils/route-helpers.js';
 
 /**

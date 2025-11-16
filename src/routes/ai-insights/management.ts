@@ -1,7 +1,7 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type Database from 'better-sqlite3';
-import type { AIInsightsRouteOptions } from './types.js';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { createLogger } from '../../utils/logger.js';
+import type { AIInsightsRouteOptions } from './types.js';
 
 const logger = createLogger('ai-management-routes');
 

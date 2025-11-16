@@ -1,9 +1,9 @@
-import { createLogger } from '../../utils/logger.js';
-import type { TrueNASClient } from '../../integrations/truenas/client.js';
 import type Database from 'better-sqlite3';
-import { ZFSPersistence } from './zfs-persistence.js';
+import type { TrueNASClient } from '../../integrations/truenas/client.js';
+import { createLogger } from '../../utils/logger.js';
+import { type ScrubSchedule, ScrubScheduler } from './scrub-scheduler.js';
 import { SnapshotManager, type SnapshotPolicy } from './snapshot-manager.js';
-import { ScrubScheduler, type ScrubSchedule } from './scrub-scheduler.js';
+import { ZFSPersistence } from './zfs-persistence.js';
 
 const logger = createLogger('zfs-manager');
 

@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import type { InfrastructureManager } from '../../services/infrastructure/manager.js';
-import { createLogger } from '../../utils/logger.js';
 import {
-  ServiceUnavailableError,
   ExternalServiceError,
   NotFoundError,
+  ServiceUnavailableError,
 } from '../../utils/error-types.js';
+import { createLogger } from '../../utils/logger.js';
 import { formatSuccess } from '../../utils/route-helpers.js';
 
 const logger = createLogger('infrastructure-analysis-routes');

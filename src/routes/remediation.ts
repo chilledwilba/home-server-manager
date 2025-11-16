@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import type { AutoRemediationService } from '../services/remediation/auto-remediation.js';
 import { z } from 'zod';
-import { withService, formatSuccess, extractBody } from '../utils/route-helpers.js';
+import type { AutoRemediationService } from '../services/remediation/auto-remediation.js';
 import { DatabaseError, NotFoundError } from '../utils/error-types.js';
+import { extractBody, formatSuccess, withService } from '../utils/route-helpers.js';
 
 const ApproveActionSchema = z.object({
   alertId: z.number(),

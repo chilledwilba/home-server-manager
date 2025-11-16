@@ -1,19 +1,19 @@
 import type Database from 'better-sqlite3';
 import type { Server as SocketIOServer } from 'socket.io';
-import { TrueNASClient } from '../integrations/truenas/client.js';
-import { PortainerClient } from '../integrations/portainer/client.js';
 import { ArrClient, PlexClient } from '../integrations/arr-apps/client.js';
-import { TrueNASMonitor } from '../services/monitoring/truenas-monitor.js';
-import { DockerMonitor } from '../services/monitoring/docker-monitor.js';
-import { DiskFailurePredictor } from '../services/monitoring/disk-predictor.js';
-import { ZFSManager } from '../services/zfs/manager.js';
-import { ZFSAssistant } from '../services/zfs/assistant.js';
+import { PortainerClient } from '../integrations/portainer/client.js';
+import { TrueNASClient } from '../integrations/truenas/client.js';
 import { NotificationService } from '../services/alerting/notification-service.js';
 import { ArrOptimizer } from '../services/arr/arr-optimizer.js';
-import { SecurityScanner } from '../services/security/scanner.js';
-import { SecurityOrchestrator } from '../services/security/orchestrator.js';
 import { InfrastructureManager } from '../services/infrastructure/manager.js';
+import { DiskFailurePredictor } from '../services/monitoring/disk-predictor.js';
+import { DockerMonitor } from '../services/monitoring/docker-monitor.js';
+import { TrueNASMonitor } from '../services/monitoring/truenas-monitor.js';
 import { AutoRemediationService } from '../services/remediation/auto-remediation.js';
+import { SecurityOrchestrator } from '../services/security/orchestrator.js';
+import { SecurityScanner } from '../services/security/scanner.js';
+import { ZFSAssistant } from '../services/zfs/assistant.js';
+import { ZFSManager } from '../services/zfs/manager.js';
 import { logger } from '../utils/logger.js';
 
 export interface ServiceContainerConfig {

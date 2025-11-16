@@ -1,6 +1,6 @@
-import type { FastifyRequest, FastifyReply, RouteHandlerMethod } from 'fastify';
-import type { FastifyWithServices } from '../core/fastify-decorators.js';
 import type Database from 'better-sqlite3';
+import type { FastifyReply, FastifyRequest, RouteHandlerMethod } from 'fastify';
+import type { FastifyWithServices } from '../core/fastify-decorators.js';
 import { DatabaseError } from './error-types.js';
 
 /**

@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import type { TrueNASMonitor } from '../services/monitoring/truenas-monitor.js';
 import type { DiskFailurePredictor } from '../services/monitoring/disk-predictor.js';
-import { createLogger } from '../utils/logger.js';
+import type { TrueNASMonitor } from '../services/monitoring/truenas-monitor.js';
 import { DatabaseError } from '../utils/error-types.js';
-import { formatSuccess, extractParams } from '../utils/route-helpers.js';
+import { createLogger } from '../utils/logger.js';
+import { extractParams, formatSuccess } from '../utils/route-helpers.js';
 
 const logger = createLogger('monitoring-routes');
 

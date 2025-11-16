@@ -3,9 +3,8 @@
  * Logs all incoming requests with timing and context
  */
 
-import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'crypto';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { logger } from '../utils/logger.js';
 
 /**

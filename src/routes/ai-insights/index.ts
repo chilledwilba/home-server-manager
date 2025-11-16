@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import type { AIInsightsRouteOptions } from './types.js';
 import { AIInsightsService } from '../../services/ai/insights-service.js';
-import { registerInsightsRoutes } from './insights.js';
+import { createLogger } from '../../utils/logger.js';
+import { registerAnalysisRoutes } from './analysis.js';
 import { registerAnomalyRoutes } from './anomalies.js';
 import { registerCapacityRoutes } from './capacity.js';
-import { registerAnalysisRoutes } from './analysis.js';
+import { registerInsightsRoutes } from './insights.js';
 import { registerManagementRoutes } from './management.js';
-import { createLogger } from '../../utils/logger.js';
+import type { AIInsightsRouteOptions } from './types.js';
 
 const logger = createLogger('ai-insights-routes');
 

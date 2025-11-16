@@ -4,9 +4,9 @@
  */
 
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+import { trackError } from '../utils/error-metrics.js';
 import { AppError, ErrorCode, ErrorSeverity } from '../utils/error-types.js';
 import { logger } from '../utils/logger.js';
-import { trackError } from '../utils/error-metrics.js';
 
 /**
  * Standardized error response format

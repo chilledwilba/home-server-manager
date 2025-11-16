@@ -5,8 +5,8 @@
 
 import type {
   FastifyInstance,
-  FastifyRequest,
   FastifyReply,
+  FastifyRequest,
   HookHandlerDoneFunction,
 } from 'fastify';
 import { getFeatureFlagManager } from '../services/feature-flags/manager.js';

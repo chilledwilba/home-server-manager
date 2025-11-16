@@ -1,8 +1,8 @@
-import type Database from 'better-sqlite3';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { createLogger } from '../../utils/logger.js';
+import type Database from 'better-sqlite3';
 import type { UPSStatus } from '../../integrations/ups/nut-client.js';
+import { createLogger } from '../../utils/logger.js';
 
 const execAsync = promisify(exec);
 const logger = createLogger('ups-shutdown-manager');

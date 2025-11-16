@@ -3,7 +3,7 @@
  * Provides runtime feature toggling with hot-reload support
  */
 
-import { readFileSync, watchFile, unwatchFile } from 'fs';
+import { readFileSync, unwatchFile, watchFile } from 'fs';
 import { join } from 'path';
 import { logger } from '../../utils/logger.js';
 

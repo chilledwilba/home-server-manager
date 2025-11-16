@@ -1,10 +1,10 @@
-import { createLogger } from '../../utils/logger.js';
 import type Database from 'better-sqlite3';
 import type { Server as SocketServer } from 'socket.io';
 import type { ArrClient } from '../../integrations/arr-apps/client.js';
+import { createLogger } from '../../utils/logger.js';
+import { ArrPersistence } from './arr-persistence.js';
 import { ArrFailureAnalyzer } from './failure-analyzer.js';
 import { ArrMetricsCalculator } from './metrics-calculator.js';
-import { ArrPersistence } from './arr-persistence.js';
 
 const logger = createLogger('arr-optimizer');
 

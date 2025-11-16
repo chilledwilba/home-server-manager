@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
-import type { FastifyWithServices } from './fastify-decorators.js';
-import type { TrueNASMonitor } from '../services/monitoring/truenas-monitor.js';
-import type { DockerMonitor } from '../services/monitoring/docker-monitor.js';
-import type { ZFSManager } from '../services/zfs/manager.js';
-import type { ArrOptimizer } from '../services/arr/arr-optimizer.js';
-import type { SecurityOrchestrator } from '../services/security/orchestrator.js';
-import type { InfrastructureManager } from '../services/infrastructure/manager.js';
 import type { HealthMonitor } from '../middleware/health-monitor.js';
+import type { ArrOptimizer } from '../services/arr/arr-optimizer.js';
+import type { InfrastructureManager } from '../services/infrastructure/manager.js';
+import type { DockerMonitor } from '../services/monitoring/docker-monitor.js';
+import type { TrueNASMonitor } from '../services/monitoring/truenas-monitor.js';
+import type { SecurityOrchestrator } from '../services/security/orchestrator.js';
+import type { ZFSManager } from '../services/zfs/manager.js';
 import { logger } from '../utils/logger.js';
+import type { FastifyWithServices } from './fastify-decorators.js';
 
 /**
  * Register health check and system info endpoints

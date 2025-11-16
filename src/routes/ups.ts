@@ -1,5 +1,5 @@
-import type { FastifyInstance } from 'fastify';
 import type Database from 'better-sqlite3';
+import type { FastifyInstance } from 'fastify';
 import type { NUTClient } from '../integrations/ups/nut-client.js';
 import type { UPSMonitor } from '../services/ups/ups-monitor.js';
 

@@ -5,7 +5,7 @@
 import type { z } from 'zod';
 
 // Re-export zod for convenience
-export { z };
+export type { z };
 
 /**
  * System Information Types

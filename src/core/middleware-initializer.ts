@@ -1,14 +1,14 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
-import cors from '@fastify/cors';
 import caching from '@fastify/caching';
+import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { correlationIdMiddleware } from '../middleware/correlation-id.js';
 import { errorHandler } from '../middleware/error-handler.js';
 import { registerRequestLogging } from '../middleware/request-logger.js';
-import { correlationIdMiddleware } from '../middleware/correlation-id.js';
-import { register, httpRequestDuration, httpRequestCounter } from '../utils/metrics.js';
 import { logger } from '../utils/logger.js';
+import { httpRequestCounter, httpRequestDuration, register } from '../utils/metrics.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
