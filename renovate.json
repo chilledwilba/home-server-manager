@@ -1,0 +1,180 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":separatePatchReleases"
+  ],
+  "description": "Automated dependency updates for Home Server Monitor",
+  "timezone": "UTC",
+  "schedule": ["before 6am on Monday"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "labels": ["dependencies", "renovate"],
+  "assigneesFromCodeOwners": true,
+  "reviewersFromCodeOwners": true,
+  "rangeStrategy": "bump",
+  "semanticCommits": "enabled",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security", "dependencies"],
+    "assignees": ["@chilledwilba"]
+  },
+  "packageRules": [
+    {
+      "description": "Security updates - highest priority, auto-merge patch and minor",
+      "matchUpdateTypes": ["patch", "minor"],
+      "matchPackagePatterns": ["*"],
+      "matchDatasources": ["npm"],
+      "vulnerabilitySeverity": ["HIGH", "CRITICAL"],
+      "labels": ["security", "priority-high", "auto-merge"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "requiredStatusChecks": null
+    },
+    {
+      "description": "Security major updates - require manual review",
+      "matchUpdateTypes": ["major"],
+      "vulnerabilitySeverity": ["HIGH", "CRITICAL"],
+      "labels": ["security", "priority-high", "major-update"],
+      "automerge": false,
+      "schedule": ["at any time"]
+    },
+    {
+      "description": "Group all patch updates together",
+      "matchUpdateTypes": ["patch"],
+      "groupName": "patch dependencies",
+      "labels": ["patch-update", "auto-merge"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "schedule": ["before 6am on Monday"]
+    },
+    {
+      "description": "Group all minor updates together",
+      "matchUpdateTypes": ["minor"],
+      "groupName": "minor dependencies",
+      "labels": ["minor-update"],
+      "automerge": false,
+      "schedule": ["before 6am on Monday"]
+    },
+    {
+      "description": "Major updates require manual review",
+      "matchUpdateTypes": ["major"],
+      "groupName": "major dependencies",
+      "labels": ["major-update", "breaking-change"],
+      "automerge": false,
+      "schedule": ["before 6am on the first day of the month"]
+    },
+    {
+      "description": "TypeScript and ESLint - group together, careful with major",
+      "matchPackageNames": ["typescript", "@types/node", "eslint", "@typescript-eslint/*"],
+      "groupName": "TypeScript and linting",
+      "labels": ["typescript", "tooling"],
+      "automerge": false
+    },
+    {
+      "description": "Testing frameworks - group together",
+      "matchPackageNames": [
+        "jest",
+        "@types/jest",
+        "ts-jest",
+        "@playwright/test",
+        "playwright",
+        "vitest",
+        "@vitest/*"
+      ],
+      "groupName": "test frameworks",
+      "labels": ["testing", "tooling"],
+      "automerge": false
+    },
+    {
+      "description": "Fastify ecosystem - group together",
+      "matchPackagePatterns": ["^@fastify/", "^fastify"],
+      "groupName": "Fastify ecosystem",
+      "labels": ["fastify", "backend"],
+      "automerge": false
+    },
+    {
+      "description": "React ecosystem - group together",
+      "matchPackagePatterns": ["^react", "^@react"],
+      "groupName": "React ecosystem",
+      "labels": ["react", "frontend"],
+      "automerge": false
+    },
+    {
+      "description": "Biome - linter and formatter",
+      "matchPackageNames": ["@biomejs/biome"],
+      "labels": ["tooling", "linter"],
+      "automerge": false
+    },
+    {
+      "description": "pnpm - package manager",
+      "matchPackageNames": ["pnpm"],
+      "labels": ["tooling", "package-manager"],
+      "automerge": false,
+      "schedule": ["before 6am on the first day of the month"]
+    },
+    {
+      "description": "Node.js - runtime version",
+      "matchDatasources": ["node-version"],
+      "enabled": true,
+      "labels": ["runtime", "nodejs"],
+      "automerge": false
+    },
+    {
+      "description": "GitHub Actions - group together",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "labels": ["ci", "github-actions"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Docker base images",
+      "matchDatasources": ["docker"],
+      "labels": ["docker", "infrastructure"],
+      "automerge": false,
+      "schedule": ["before 6am on the first day of the month"]
+    },
+    {
+      "description": "Pin dependencies for better reproducibility",
+      "matchDepTypes": ["dependencies"],
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Allow ranges for dev dependencies",
+      "matchDepTypes": ["devDependencies"],
+      "rangeStrategy": "bump"
+    }
+  ],
+  "ignoreDeps": [],
+  "ignorePresets": [],
+  "prBodyTemplate": "{{{header}}}\n\n{{{table}}}\n\n{{{notes}}}\n\n{{{changelogs}}}\n\n{{{configDescription}}}\n\n{{{controls}}}\n\n{{{footer}}}",
+  "prTitle": "{{{semanticPrefix}}}{{{prettyNewMajor}}}{{#if isLockfileUpdate}} (lockfile){{/if}}{{#if isPatch}} (patch){{/if}}{{#if isMinor}} (minor){{/if}}{{#if isMajor}} (major){{/if}}",
+  "commitMessagePrefix": "chore(deps):",
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{depName}}",
+  "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isMajor}}{{prettyNewMajor}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}",
+  "commitMessageSuffix": "",
+  "branchPrefix": "renovate/",
+  "branchConcurrentLimit": 10,
+  "prCreation": "not-pending",
+  "rebaseWhen": "conflicted",
+  "enabledManagers": ["npm", "github-actions", "dockerfile", "docker-compose"],
+  "npm": {
+    "minimumReleaseAge": "3 days"
+  },
+  "stabilityDays": 3,
+  "postUpdateOptions": ["pnpmDedupe"],
+  "pnpm": {
+    "supportPolicy": ["lts"]
+  }
+}

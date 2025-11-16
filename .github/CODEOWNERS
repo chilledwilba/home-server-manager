@@ -1,0 +1,42 @@
+# Code Owners for Home Server Monitor
+# These owners will be requested for review when someone opens a pull request.
+
+# Default owners for everything in the repo
+* @chilledwilba
+
+# Infrastructure and CI/CD
+/.github/ @chilledwilba
+/Dockerfile @chilledwilba
+/docker-compose*.yml @chilledwilba
+/.dockerignore @chilledwilba
+
+# Dependencies and package management
+/package.json @chilledwilba
+/pnpm-lock.yaml @chilledwilba
+/pnpm-workspace.yaml @chilledwilba
+/renovate.json @chilledwilba
+
+# Documentation
+/docs/ @chilledwilba
+/README.md @chilledwilba
+/*.md @chilledwilba
+
+# Configuration files
+/.vscode/ @chilledwilba
+/tsconfig*.json @chilledwilba
+/biome.json @chilledwilba
+/jest.config.ts @chilledwilba
+/playwright.config.ts @chilledwilba
+
+# Database and migrations
+/src/db/ @chilledwilba
+/scripts/migrate.ts @chilledwilba
+/scripts/restore.ts @chilledwilba
+
+# Security-critical files
+/src/middleware/auth*.ts @chilledwilba
+/src/routes/security/ @chilledwilba
+/src/services/security/ @chilledwilba
+
+# Testing
+/tests/ @chilledwilba
