@@ -1,11 +1,14 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
 # Check file sizes (WARNING ONLY - does not block commits)
-node scripts/check-file-sizes.js --mode=warning
+node scripts/check-file-sizes.js --mode=warning || true
 
 # Run lint-staged
-pnpm exec lint-staged
+pnpm exec lint-staged || {
+  echo "❌ lint-staged failed. Please fix the linting errors."
+  exit 1
+}
 
 # Type check
-pnpm run type-check
+pnpm run type-check || {
+  echo "❌ Type check failed. Please fix the type errors."
+  exit 1
+}

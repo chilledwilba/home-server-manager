@@ -1,8 +1,11 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
 # Type check
-pnpm run type-check
+pnpm run type-check || {
+  echo "❌ Type check failed. Cannot push with type errors."
+  exit 1
+}
 
 # Run tests
-pnpm test
+pnpm test || {
+  echo "❌ Tests failed. Cannot push with failing tests."
+  exit 1
+}
