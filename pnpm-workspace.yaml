@@ -1,2 +1,7 @@
 packages:
   - 'client'
+
+# Security: Only allow trusted packages to run build scripts
+# This prevents malicious packages from executing code during installation
+onlyBuiltDependencies:
+  - better-sqlite3
