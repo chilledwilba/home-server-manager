@@ -1,10 +1,4 @@
-# Type check
-pnpm run type-check || {
-  echo "❌ Type check failed. Cannot push with type errors."
-  exit 1
-}
-
-# Run tests
+# Run tests (type-check already done in pre-commit)
 pnpm test || {
   echo "❌ Tests failed. Cannot push with failing tests."
   exit 1

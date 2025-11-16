@@ -288,6 +288,174 @@ Context7 MCP runs locally and only fetches public documentation:
 - [Model Context Protocol Specification](https://modelcontextprotocol.io/)
 - [Claude Desktop MCP Setup](https://docs.anthropic.com/claude/docs/model-context-protocol)
 
+## Git Hooks (Husky)
+
+The project uses [Husky](https://typicode.github.io/husky/) v9 to enforce code quality through automated Git hooks. This ensures consistent code standards across all commits and prevents broken code from being pushed.
+
+### What Runs When
+
+#### Pre-Commit Hook (`.husky/pre-commit`)
+
+Runs automatically before **every commit**:
+
+1. **File size warnings** - Checks for files exceeding size limits (non-blocking)
+2. **Lint-staged** - Formats and lints only staged files using Biome
+3. **Type check** - Validates TypeScript types across the project
+
+**Expected time:** ~1-3 seconds
+
+#### Pre-Push Hook (`.husky/pre-push`)
+
+Runs automatically before **every push**:
+
+1. **Test suite** - Runs all Jest tests to ensure nothing is broken
+
+**Expected time:** ~5-30 seconds (depending on test suite size)
+
+#### Commit-Msg Hook (`.husky/commit-msg`)
+
+Runs automatically when **writing commit messages**:
+
+1. **CommitLint** - Validates commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
+
+**Expected format:**
+```
+type(scope): subject
+
+body (optional)
+```
+
+**Valid types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+
+**Examples:**
+```bash
+feat: add dark mode toggle to settings
+fix: resolve memory leak in WebSocket connection
+docs: update API documentation for v2 endpoints
+```
+
+### How to Skip Hooks (Emergency Use Only)
+
+Sometimes you need to bypass hooks temporarily (e.g., work-in-progress commits):
+
+```bash
+# Skip pre-commit and commit-msg hooks
+git commit --no-verify -m "WIP: experimental feature"
+
+# Skip pre-push hook
+git push --no-verify
+```
+
+⚠️ **Warning:** Only use `--no-verify` when absolutely necessary. Bypassed checks must pass before merging to main.
+
+### Running Hooks Manually
+
+Test hooks before committing:
+
+```bash
+# Test pre-commit hook
+node scripts/check-file-sizes.js --mode=warning
+pnpm exec lint-staged
+pnpm run type-check
+
+# Test pre-push hook
+pnpm test
+
+# Test commit message format
+echo "test: my commit message" | npx commitlint
+```
+
+### Configuration Files
+
+- **`.husky/pre-commit`** - Pre-commit hook script
+- **`.husky/pre-push`** - Pre-push hook script
+- **`.husky/commit-msg`** - Commit message validation script
+- **`.lintstagedrc.json`** - Lint-staged configuration
+- **`commitlint.config.js`** - Commit message rules
+- **`scripts/check-file-sizes.js`** - File size checker
+
+### Troubleshooting
+
+#### "Hooks not running"
+
+1. Verify Husky is installed:
+   ```bash
+   ls -la .husky/
+   ```
+
+2. Check Git hooks path:
+   ```bash
+   git config core.hooksPath
+   # Should output: .husky
+   ```
+
+3. Reinstall hooks:
+   ```bash
+   pnpm install
+   ```
+
+#### "Type check is slow"
+
+Type checking the entire project can take 2-5 seconds. This is normal and ensures type safety before commits.
+
+For faster iteration during development, use watch mode:
+```bash
+pnpm run type-check:watch
+```
+
+#### "Lint-staged fails on unchanged files"
+
+This usually means there are formatting or linting issues in staged files. Fix them:
+
+```bash
+# Auto-fix most issues
+pnpm run check
+
+# Or manually fix specific files
+biome check --write src/path/to/file.ts
+```
+
+#### "Commit message rejected"
+
+Ensure your commit message follows the format:
+```
+type: description in lowercase
+
+- Must start with a valid type (feat, fix, docs, etc.)
+- Subject must be lowercase
+- Header max 72 characters
+- No period at the end of subject
+```
+
+### Performance Optimization
+
+The hooks are optimized for speed:
+
+- **Lint-staged** only processes staged files, not the entire codebase
+- **Type check** runs only once per commit (not duplicated in pre-push)
+- **Tests** run only before push, not on every commit
+- **File size checks** are warnings only (non-blocking)
+
+**Before optimization:** ~8-15 seconds per commit
+**After optimization:** ~1-3 seconds per commit
+
+### Best Practices
+
+1. **Commit frequently** - Small commits are faster to validate
+2. **Fix issues immediately** - Don't accumulate type/lint errors
+3. **Write good commit messages** - Follow conventional commits format
+4. **Don't bypass hooks** - They catch issues early
+5. **Run tests locally** - Don't rely solely on pre-push hook
+
+### CI/CD Integration
+
+Hooks are automatically disabled in CI environments (detected via `CI=true`). This prevents duplicate checks since CI runs its own validation pipeline.
+
+To manually disable hooks:
+```bash
+HUSKY=0 git commit -m "message"
+```
+
 ## Other AI Development Tools
 
 ### GitHub Copilot

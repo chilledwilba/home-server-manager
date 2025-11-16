@@ -98,5 +98,5 @@ if (violations.length > 0) {
   }
 }
 
-console.log('✅ Commit allowed' + (mode ===' warning' && violations.length > 0 ? ' (warnings only)' : ''));
+console.log('✅ Commit allowed' + (mode === 'warning' && violations.length > 0 ? ' (warnings only)' : ''));
 process.exit(0);
