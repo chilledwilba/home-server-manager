@@ -1,4 +1,5 @@
 import { Activity, Bell, HardDrive, Server, Shield } from 'lucide-react';
+import { memo, useMemo } from 'react';
 import { AlertFeed } from '../components/Dashboard/AlertFeed';
 import { ContainerGrid } from '../components/Dashboard/ContainerGrid';
 import { DashboardSkeleton } from '../components/Dashboard/DashboardSkeleton';
@@ -17,15 +18,23 @@ export function Dashboard() {
   const { data: securityData, isLoading: securityLoading } = useSecurityStatus();
   const { data: alertsData, isLoading: alertsLoading } = useAlerts({ limit: 10 });
 
-  // Show skeleton while any critical data is loading
-  if (metricsLoading || poolsLoading || containersLoading || securityLoading || alertsLoading) {
-    return <DashboardSkeleton />;
-  }
-
   const pools = (poolsData?.pools || []) as Pool[];
   const containers = (containersData?.containers || []) as ContainerInfo[];
   const alerts = (alertsData?.alerts || []) as Alert[];
   const metrics = metricsData?.data as SystemMetricsType | undefined;
+
+  // Memoize calculated values to prevent unnecessary re-renders
+  // Must be called before any early returns (Rules of Hooks)
+  const activeAlertsCount = useMemo(() => alerts.filter((a) => !a.resolved).length, [alerts]);
+  const alertColor = useMemo(
+    () => (alerts.some((a) => a.severity === 'critical') ? 'red' : 'yellow'),
+    [alerts],
+  );
+
+  // Show skeleton while any critical data is loading
+  if (metricsLoading || poolsLoading || containersLoading || securityLoading || alertsLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -52,8 +61,8 @@ export function Dashboard() {
         <StatCard
           icon={<Bell className="w-6 h-6" />}
           title="Active Alerts"
-          value={alerts.filter((a) => !a.resolved).length.toString()}
-          color={alerts.some((a) => a.severity === 'critical') ? 'red' : 'yellow'}
+          value={activeAlertsCount.toString()}
+          color={alertColor}
         />
       </div>
 
@@ -135,15 +144,17 @@ interface StatCardProps {
   color: 'green' | 'red' | 'blue' | 'purple' | 'yellow';
 }
 
-function StatCard({ icon, title, value, color }: StatCardProps) {
-  const colorClasses = {
-    green: 'text-green-600 bg-green-100 dark:bg-green-900/20',
-    red: 'text-red-600 bg-red-100 dark:bg-red-900/20',
-    blue: 'text-blue-600 bg-blue-100 dark:bg-blue-900/20',
-    purple: 'text-purple-600 bg-purple-100 dark:bg-purple-900/20',
-    yellow: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/20',
-  };
+// Memoize color classes outside component to prevent recreation
+const COLOR_CLASSES = {
+  green: 'text-green-600 bg-green-100 dark:bg-green-900/20',
+  red: 'text-red-600 bg-red-100 dark:bg-red-900/20',
+  blue: 'text-blue-600 bg-blue-100 dark:bg-blue-900/20',
+  purple: 'text-purple-600 bg-purple-100 dark:bg-purple-900/20',
+  yellow: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/20',
+} as const;
 
+// Memoize StatCard to prevent unnecessary re-renders
+const StatCard = memo(({ icon, title, value, color }: StatCardProps) => {
   return (
     <Card>
       <CardContent className="p-6">
@@ -152,9 +163,9 @@ function StatCard({ icon, title, value, color }: StatCardProps) {
             <p className="text-sm text-muted-foreground">{title}</p>
             <p className="text-2xl font-semibold mt-1">{value}</p>
           </div>
-          <div className={`p-3 rounded-lg ${colorClasses[color]}`}>{icon}</div>
+          <div className={`p-3 rounded-lg ${COLOR_CLASSES[color]}`}>{icon}</div>
         </div>
       </CardContent>
     </Card>
   );
-}
+});

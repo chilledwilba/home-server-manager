@@ -8,7 +8,7 @@ import {
   Info as InfoIcon,
   RefreshCw,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,10 +33,40 @@ export function Alerts() {
 
   const { data: alertsData, isLoading } = useAlerts({ limit: 100 });
 
-  const handleRefresh = () => {
+  const alerts = (alertsData?.alerts || []) as Alert[];
+
+  // Memoize refresh handler to prevent unnecessary re-renders
+  const handleRefresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['alerts'] });
     toast.success('Refreshing alerts...');
-  };
+  }, [queryClient]);
+
+  // Memoize filtered alerts to prevent recalculation on every render
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter((alert) => {
+      if (filter === 'active' && alert.resolved) {
+        return false;
+      }
+      if (filter === 'resolved' && !alert.resolved) {
+        return false;
+      }
+      if (severity !== 'all' && alert.severity.toLowerCase() !== severity) {
+        return false;
+      }
+      return true;
+    });
+  }, [alerts, filter, severity]);
+
+  // Memoize stats calculations to prevent multiple filter operations on every render
+  const stats = useMemo(() => {
+    return {
+      total: alerts.length,
+      active: alerts.filter((a) => !a.resolved).length,
+      resolved: alerts.filter((a) => a.resolved).length,
+      critical: alerts.filter((a) => a.severity.toLowerCase() === 'critical' && !a.resolved).length,
+      warning: alerts.filter((a) => a.severity.toLowerCase() === 'warning' && !a.resolved).length,
+    };
+  }, [alerts]);
 
   if (isLoading) {
     const StatSkeleton = () => (
@@ -83,30 +113,6 @@ export function Alerts() {
       </div>
     );
   }
-
-  const alerts = (alertsData?.alerts || []) as Alert[];
-
-  // Filter alerts
-  const filteredAlerts = alerts.filter((alert) => {
-    if (filter === 'active' && alert.resolved) {
-      return false;
-    }
-    if (filter === 'resolved' && !alert.resolved) {
-      return false;
-    }
-    if (severity !== 'all' && alert.severity.toLowerCase() !== severity) {
-      return false;
-    }
-    return true;
-  });
-
-  const stats = {
-    total: alerts.length,
-    active: alerts.filter((a) => !a.resolved).length,
-    resolved: alerts.filter((a) => a.resolved).length,
-    critical: alerts.filter((a) => a.severity.toLowerCase() === 'critical' && !a.resolved).length,
-    warning: alerts.filter((a) => a.severity.toLowerCase() === 'warning' && !a.resolved).length,
-  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
