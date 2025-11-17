@@ -53,6 +53,75 @@ export async function dockerRoutes(
   });
 
   /**
+   * POST /api/containers/:id/start
+   * Start a container
+   */
+  fastify.post<{
+    Params: { id: string };
+  }>('/api/containers/:id/start', async (request, reply) => {
+    try {
+      const { id } = extractParams<{ id: string }>(request.params);
+      await monitor.startContainer(id);
+
+      return formatSuccess(null, `Container ${id} started successfully`);
+    } catch (error) {
+      fastify.log.error({ error, containerId: request.params.id }, 'Failed to start container');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to start container',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  /**
+   * POST /api/containers/:id/stop
+   * Stop a container
+   */
+  fastify.post<{
+    Params: { id: string };
+  }>('/api/containers/:id/stop', async (request, reply) => {
+    try {
+      const { id } = extractParams<{ id: string }>(request.params);
+      await monitor.stopContainer(id);
+
+      return formatSuccess(null, `Container ${id} stopped successfully`);
+    } catch (error) {
+      fastify.log.error({ error, containerId: request.params.id }, 'Failed to stop container');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to stop container',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  /**
+   * POST /api/containers/:id/restart
+   * Restart a container
+   */
+  fastify.post<{
+    Params: { id: string };
+  }>('/api/containers/:id/restart', async (request, reply) => {
+    try {
+      const { id } = extractParams<{ id: string }>(request.params);
+      await monitor.restartContainer(id);
+
+      return formatSuccess(null, `Container ${id} restarted successfully`);
+    } catch (error) {
+      fastify.log.error({ error, containerId: request.params.id }, 'Failed to restart container');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to restart container',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  /**
    * GET /arr/:app
    * Get status for a specific Arr application (Sonarr, Radarr, etc.)
    */

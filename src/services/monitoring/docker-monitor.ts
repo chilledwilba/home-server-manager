@@ -304,4 +304,43 @@ export class DockerMonitor {
 
     return { status, health, queue };
   }
+
+  /**
+   * Start a container
+   */
+  async startContainer(containerId: string): Promise<boolean> {
+    logger.info({ containerId }, 'Starting container');
+    const result = await this.portainer.startContainer(containerId);
+
+    // Trigger immediate refresh of container data
+    void this.fetchAllData();
+
+    return result;
+  }
+
+  /**
+   * Stop a container
+   */
+  async stopContainer(containerId: string): Promise<boolean> {
+    logger.info({ containerId }, 'Stopping container');
+    const result = await this.portainer.stopContainer(containerId);
+
+    // Trigger immediate refresh of container data
+    void this.fetchAllData();
+
+    return result;
+  }
+
+  /**
+   * Restart a container
+   */
+  async restartContainer(containerId: string): Promise<boolean> {
+    logger.info({ containerId }, 'Restarting container');
+    const result = await this.portainer.restartContainer(containerId);
+
+    // Trigger immediate refresh of container data
+    void this.fetchAllData();
+
+    return result;
+  }
 }

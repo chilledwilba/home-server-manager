@@ -1,13 +1,12 @@
 import { QueryClient } from '@tanstack/react-query';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3100';
+import { API_CONFIG } from './config';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchInterval: 30000, // 30 seconds
-      staleTime: 10000, // 10 seconds
-      retry: 3,
+      refetchInterval: API_CONFIG.REFETCH_INTERVAL,
+      staleTime: API_CONFIG.STALE_TIME,
+      retry: API_CONFIG.RETRY_ATTEMPTS,
     },
   },
 });
@@ -16,9 +15,9 @@ class ApiClient {
   private baseUrl: string;
   private token: string | null = null;
 
-  constructor(baseUrl: string = API_BASE_URL) {
+  constructor(baseUrl: string = API_CONFIG.BASE_URL) {
     this.baseUrl = baseUrl;
-    this.token = localStorage.getItem('auth_token');
+    this.token = localStorage.getItem(API_CONFIG.AUTH_TOKEN_KEY);
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -32,7 +31,7 @@ class ApiClient {
     }
 
     if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+      headers.Authorization = `Bearer ${this.token}`;
     }
 
     const response = await fetch(url, {
@@ -162,8 +161,12 @@ class ApiClient {
 
   async getArrFailedDownloads(app?: string, limit?: number) {
     const params = new URLSearchParams();
-    if (app) params.set('app', app);
-    if (limit) params.set('limit', limit.toString());
+    if (app) {
+      params.set('app', app);
+    }
+    if (limit) {
+      params.set('limit', limit.toString());
+    }
     return this.request<{ success: boolean; failures: unknown[] }>(
       `/api/arr/failed?${params.toString()}`,
     );
@@ -179,7 +182,9 @@ class ApiClient {
 
   async getArrQueueStats(app: string, limit?: number) {
     const params = new URLSearchParams();
-    if (limit) params.set('limit', limit.toString());
+    if (limit) {
+      params.set('limit', limit.toString());
+    }
     return this.request<{ success: boolean; app: string; stats: unknown[] }>(
       `/api/arr/queue/${app}?${params.toString()}`,
     );
@@ -187,19 +192,59 @@ class ApiClient {
 
   async getArrHealth(app: string, limit?: number) {
     const params = new URLSearchParams();
-    if (limit) params.set('limit', limit.toString());
+    if (limit) {
+      params.set('limit', limit.toString());
+    }
     return this.request<{ success: boolean; app: string; health: unknown[] }>(
       `/api/arr/health/${app}?${params.toString()}`,
     );
   }
 
-  // Settings
-  async getSettings() {
-    return this.request<{ success: boolean; settings: unknown }>('/api/v1/settings');
+  // Feature Flags
+  async getFeatureFlags() {
+    return this.request<{
+      success: boolean;
+      flags: Record<
+        string,
+        {
+          name: string;
+          enabled: boolean;
+          description?: string;
+          environments?: string[];
+        }
+      >;
+    }>('/api/feature-flags');
   }
 
-  async updateSettings(settings: unknown) {
-    return this.request<{ success: boolean }>('/api/v1/settings', {
+  // Settings
+  async getSettings() {
+    return this.request<{
+      success: boolean;
+      data: {
+        refreshInterval: number;
+        alertNotifications: {
+          critical: boolean;
+          warning: boolean;
+          info: boolean;
+        };
+        truenasUrl: string;
+        truenasApiKey: string;
+      };
+      timestamp: string;
+    }>('/api/settings');
+  }
+
+  async updateSettings(settings: {
+    refreshInterval?: number;
+    alertNotifications?: {
+      critical?: boolean;
+      warning?: boolean;
+      info?: boolean;
+    };
+    truenasUrl?: string;
+    truenasApiKey?: string;
+  }) {
+    return this.request<{ success: boolean; message: string; timestamp: string }>('/api/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
     });

@@ -8,6 +8,7 @@ import { monitoringRoutes } from '../routes/monitoring.js';
 import { notificationRoutes } from '../routes/notifications.js';
 import { remediationRoutes } from '../routes/remediation.js';
 import { securityRoutes } from '../routes/security/index.js';
+import { settingsRoutes } from '../routes/settings.js';
 import { zfsRoutes } from '../routes/zfs.js';
 import type { InfrastructureManager } from '../services/infrastructure/manager.js';
 import type { DiskFailurePredictor } from '../services/monitoring/disk-predictor.js';
@@ -81,6 +82,10 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   // Feature flag routes
   await fastify.register(featureFlagRoutes);
   logger.info('Feature flag routes registered');
+
+  // Settings routes
+  await fastify.register(settingsRoutes);
+  logger.info('Settings routes registered');
 
   // UPS routes (if enabled)
   await registerUPSRoutes(fastify);

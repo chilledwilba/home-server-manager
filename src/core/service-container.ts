@@ -12,6 +12,7 @@ import { TrueNASMonitor } from '../services/monitoring/truenas-monitor.js';
 import { AutoRemediationService } from '../services/remediation/auto-remediation.js';
 import { SecurityOrchestrator } from '../services/security/orchestrator.js';
 import { SecurityScanner } from '../services/security/scanner.js';
+import { SettingsService } from '../services/settings/settings-service.js';
 import { ZFSAssistant } from '../services/zfs/assistant.js';
 import { ZFSManager } from '../services/zfs/manager.js';
 import { logger } from '../utils/logger.js';
@@ -282,6 +283,10 @@ export class ServiceContainer {
   private initializeCoreServices(): void {
     logger.info('Initializing core services...');
 
+    // Settings Service
+    this.services.set('settings', new SettingsService(this.db));
+    logger.info('Settings service initialized');
+
     // Disk Failure Predictor
     this.services.set('diskPredictor', new DiskFailurePredictor(this.db));
 
@@ -299,8 +304,7 @@ export class ServiceContainer {
     }
 
     // Auto-Remediation Service
-    const portainerClient = this.get<PortainerClient>('portainerClient');
-    this.services.set('remediationService', new AutoRemediationService(this.db, portainerClient));
+    this.services.set('remediationService', new AutoRemediationService(this.db));
 
     logger.info('Core services initialized');
   }

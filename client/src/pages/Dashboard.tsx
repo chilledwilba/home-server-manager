@@ -1,26 +1,25 @@
 import { Activity, Bell, HardDrive, Server, Shield } from 'lucide-react';
 import { AlertFeed } from '../components/Dashboard/AlertFeed';
 import { ContainerGrid } from '../components/Dashboard/ContainerGrid';
+import { DashboardSkeleton } from '../components/Dashboard/DashboardSkeleton';
 import { PoolStatus } from '../components/Dashboard/PoolStatus';
 import { QuickActions } from '../components/Dashboard/QuickActions';
 import { SystemMetrics } from '../components/Dashboard/SystemMetrics';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { useAlerts } from '../hooks/useAlerts';
 import { useContainers, useMetrics, usePools, useSecurityStatus } from '../hooks/useMetrics';
 import type { Alert, ContainerInfo, Pool, SystemMetrics as SystemMetricsType } from '../lib/types';
 
 export function Dashboard() {
   const { data: metricsData, isLoading: metricsLoading } = useMetrics();
-  const { data: poolsData } = usePools();
-  const { data: containersData } = useContainers();
-  const { data: securityData } = useSecurityStatus();
-  const { data: alertsData } = useAlerts({ limit: 10 });
+  const { data: poolsData, isLoading: poolsLoading } = usePools();
+  const { data: containersData, isLoading: containersLoading } = useContainers();
+  const { data: securityData, isLoading: securityLoading } = useSecurityStatus();
+  const { data: alertsData, isLoading: alertsLoading } = useAlerts({ limit: 10 });
 
-  if (metricsLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="spinner h-12 w-12" />
-      </div>
-    );
+  // Show skeleton while any critical data is loading
+  if (metricsLoading || poolsLoading || containersLoading || securityLoading || alertsLoading) {
+    return <DashboardSkeleton />;
   }
 
   const pools = (poolsData?.pools || []) as Pool[];
@@ -29,7 +28,7 @@ export function Dashboard() {
   const metrics = metricsData?.data as SystemMetricsType | undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -63,46 +62,66 @@ export function Dashboard() {
         {/* Left Column - 2 cols */}
         <div className="xl:col-span-2 space-y-6">
           {/* Pool Status */}
-          <div className="card">
-            <h2 className="card-header">
-              <HardDrive className="w-5 h-5" />
-              Storage Pools
-            </h2>
-            <PoolStatus pools={pools} />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HardDrive className="w-5 h-5" />
+                Storage Pools
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PoolStatus pools={pools} />
+            </CardContent>
+          </Card>
 
           {/* System Metrics */}
-          <div className="card">
-            <h2 className="card-header">
-              <Activity className="w-5 h-5" />
-              System Metrics
-            </h2>
-            <SystemMetrics metrics={metrics} />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                System Metrics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SystemMetrics metrics={metrics} />
+            </CardContent>
+          </Card>
 
           {/* Container Grid */}
-          <div className="card">
-            <h2 className="card-header">Docker Containers</h2>
-            <ContainerGrid containers={containers} />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Docker Containers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ContainerGrid containers={containers} />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right Column - 1 col */}
         <div className="space-y-6">
           {/* Alert Feed */}
-          <div className="card">
-            <h2 className="card-header">
-              <Bell className="w-5 h-5" />
-              Recent Alerts
-            </h2>
-            <AlertFeed alerts={alerts} />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Recent Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AlertFeed alerts={alerts} />
+            </CardContent>
+          </Card>
 
           {/* Quick Actions */}
-          <div className="card">
-            <h2 className="card-header">Quick Actions</h2>
-            <QuickActions />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QuickActions />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
@@ -126,14 +145,16 @@ function StatCard({ icon, title, value, color }: StatCardProps) {
   };
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="stat-label">{title}</p>
-          <p className="stat-value">{value}</p>
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="text-2xl font-semibold mt-1">{value}</p>
+          </div>
+          <div className={`p-3 rounded-lg ${colorClasses[color]}`}>{icon}</div>
         </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>{icon}</div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
