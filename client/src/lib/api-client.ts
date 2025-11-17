@@ -32,7 +32,7 @@ class ApiClient {
     }
 
     if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+      headers.Authorization = `Bearer ${this.token}`;
     }
 
     const response = await fetch(url, {
@@ -162,8 +162,12 @@ class ApiClient {
 
   async getArrFailedDownloads(app?: string, limit?: number) {
     const params = new URLSearchParams();
-    if (app) params.set('app', app);
-    if (limit) params.set('limit', limit.toString());
+    if (app) {
+      params.set('app', app);
+    }
+    if (limit) {
+      params.set('limit', limit.toString());
+    }
     return this.request<{ success: boolean; failures: unknown[] }>(
       `/api/arr/failed?${params.toString()}`,
     );
@@ -179,7 +183,9 @@ class ApiClient {
 
   async getArrQueueStats(app: string, limit?: number) {
     const params = new URLSearchParams();
-    if (limit) params.set('limit', limit.toString());
+    if (limit) {
+      params.set('limit', limit.toString());
+    }
     return this.request<{ success: boolean; app: string; stats: unknown[] }>(
       `/api/arr/queue/${app}?${params.toString()}`,
     );
@@ -187,7 +193,9 @@ class ApiClient {
 
   async getArrHealth(app: string, limit?: number) {
     const params = new URLSearchParams();
-    if (limit) params.set('limit', limit.toString());
+    if (limit) {
+      params.set('limit', limit.toString());
+    }
     return this.request<{ success: boolean; app: string; health: unknown[] }>(
       `/api/arr/health/${app}?${params.toString()}`,
     );
@@ -195,11 +203,33 @@ class ApiClient {
 
   // Settings
   async getSettings() {
-    return this.request<{ success: boolean; settings: unknown }>('/api/v1/settings');
+    return this.request<{
+      success: boolean;
+      data: {
+        refreshInterval: number;
+        alertNotifications: {
+          critical: boolean;
+          warning: boolean;
+          info: boolean;
+        };
+        truenasUrl: string;
+        truenasApiKey: string;
+      };
+      timestamp: string;
+    }>('/api/settings');
   }
 
-  async updateSettings(settings: unknown) {
-    return this.request<{ success: boolean }>('/api/v1/settings', {
+  async updateSettings(settings: {
+    refreshInterval?: number;
+    alertNotifications?: {
+      critical?: boolean;
+      warning?: boolean;
+      info?: boolean;
+    };
+    truenasUrl?: string;
+    truenasApiKey?: string;
+  }) {
+    return this.request<{ success: boolean; message: string; timestamp: string }>('/api/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
     });
