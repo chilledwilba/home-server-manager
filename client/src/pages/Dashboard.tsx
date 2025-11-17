@@ -1,5 +1,5 @@
-import { memo, useMemo } from 'react';
 import { Activity, Bell, HardDrive, Server, Shield } from 'lucide-react';
+import { memo, useMemo } from 'react';
 import { AlertFeed } from '../components/Dashboard/AlertFeed';
 import { ContainerGrid } from '../components/Dashboard/ContainerGrid';
 import { DashboardSkeleton } from '../components/Dashboard/DashboardSkeleton';
@@ -28,7 +28,7 @@ export function Dashboard() {
   const activeAlertsCount = useMemo(() => alerts.filter((a) => !a.resolved).length, [alerts]);
   const alertColor = useMemo(
     () => (alerts.some((a) => a.severity === 'critical') ? 'red' : 'yellow'),
-    [alerts]
+    [alerts],
   );
 
   // Show skeleton while any critical data is loading

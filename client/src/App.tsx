@@ -9,11 +9,13 @@ import { Toaster } from './components/ui/sonner';
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Alerts = lazy(() => import('./pages/Alerts').then((m) => ({ default: m.Alerts })));
 const ArrMonitoring = lazy(() =>
-  import('./pages/ArrMonitoring').then((m) => ({ default: m.ArrMonitoring }))
+  import('./pages/ArrMonitoring').then((m) => ({ default: m.ArrMonitoring })),
 );
-const Containers = lazy(() => import('./pages/Containers').then((m) => ({ default: m.Containers })));
+const Containers = lazy(() =>
+  import('./pages/Containers').then((m) => ({ default: m.Containers })),
+);
 const FeatureFlags = lazy(() =>
-  import('./pages/FeatureFlags').then((m) => ({ default: m.FeatureFlags }))
+  import('./pages/FeatureFlags').then((m) => ({ default: m.FeatureFlags })),
 );
 const Pools = lazy(() => import('./pages/Pools').then((m) => ({ default: m.Pools })));
 const Security = lazy(() => import('./pages/Security').then((m) => ({ default: m.Security })));

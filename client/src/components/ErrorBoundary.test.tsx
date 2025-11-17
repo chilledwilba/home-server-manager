@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@/test/utils';
 import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@/test/utils';
 import { ErrorBoundary } from './ErrorBoundary';
 
 // Component that throws an error
@@ -26,7 +26,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <div>Child component</div>
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(screen.getByText('Child component')).toBeInTheDocument();
@@ -37,7 +37,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(screen.getByText('Test error message')).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     const reloadButton = screen.getByRole('button', { name: /reload page/i });
@@ -69,7 +69,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     const dashboardButton = screen.getByRole('button', { name: /go to dashboard/i });
@@ -87,7 +87,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     const reloadButton = screen.getByRole('button', { name: /reload page/i });
@@ -107,7 +107,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     const dashboardButton = screen.getByRole('button', { name: /go to dashboard/i });
@@ -122,7 +122,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(consoleErrorSpy).toHaveBeenCalled();
@@ -132,7 +132,7 @@ describe('ErrorBoundary', () => {
     const { container } = render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     // Check for the AlertCircle icon (svg element)

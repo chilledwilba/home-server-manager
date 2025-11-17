@@ -63,8 +63,7 @@ export function Alerts() {
       total: alerts.length,
       active: alerts.filter((a) => !a.resolved).length,
       resolved: alerts.filter((a) => a.resolved).length,
-      critical: alerts.filter((a) => a.severity.toLowerCase() === 'critical' && !a.resolved)
-        .length,
+      critical: alerts.filter((a) => a.severity.toLowerCase() === 'critical' && !a.resolved).length,
       warning: alerts.filter((a) => a.severity.toLowerCase() === 'warning' && !a.resolved).length,
     };
   }, [alerts]);
