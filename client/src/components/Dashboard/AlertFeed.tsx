@@ -1,5 +1,6 @@
 import { AlertCircle, AlertTriangle, CheckCircle, Info } from 'lucide-react';
-import { formatRelativeTime, getSeverityColor } from '../../lib/utils';
+import { formatRelativeTime } from '../../lib/utils';
+import { Badge } from '../ui/badge';
 
 interface Alert {
   id: number;
@@ -17,9 +18,7 @@ interface AlertFeedProps {
 
 export function AlertFeed({ alerts }: AlertFeedProps) {
   if (!alerts || alerts.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">No recent alerts</div>
-    );
+    return <div className="text-center py-8 text-muted-foreground">No recent alerts</div>;
   }
 
   return (
@@ -33,16 +32,18 @@ export function AlertFeed({ alerts }: AlertFeedProps) {
             {getSeverityIcon(alert.severity)}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${getSeverityColor(alert.severity)}`}
+                <Badge
+                  variant={
+                    alert.severity.toLowerCase() === 'critical' ? 'destructive' : 'secondary'
+                  }
                 >
                   {alert.severity}
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+                </Badge>
+                <span className="text-xs text-muted-foreground">
                   {formatRelativeTime(alert.created_at)}
                 </span>
               </div>
-              <p className="text-sm text-gray-900 dark:text-gray-100">{alert.message}</p>
+              <p className="text-sm">{alert.message}</p>
               {alert.resolved ? (
                 <div className="flex items-center gap-1 mt-1 text-xs text-green-600 dark:text-green-400">
                   <CheckCircle className="w-3 h-3" />

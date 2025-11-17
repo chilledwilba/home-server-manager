@@ -1,5 +1,6 @@
 import { Menu, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from '../ui/button';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -35,28 +36,25 @@ export function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+    <header className="bg-background border-b border-border sticky top-0 z-10">
       <div className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4">
-          <button
-            onClick={onMenuClick}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            aria-label="Toggle menu"
-          >
+          <Button variant="ghost" size="icon" onClick={onMenuClick} aria-label="Toggle menu">
             <Menu className="w-5 h-5" />
-          </button>
+          </Button>
 
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Home Server Monitor</h1>
+          <h1 className="text-xl font-bold">Home Server Monitor</h1>
         </div>
 
         <div className="flex items-center gap-4">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleDarkMode}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             aria-label="Toggle dark mode"
           >
             {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
+          </Button>
         </div>
       </div>
     </header>

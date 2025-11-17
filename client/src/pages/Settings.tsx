@@ -1,4 +1,9 @@
 import { Settings as SettingsIcon } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Switch } from '../components/ui/switch';
 
 export function Settings() {
   return (
@@ -10,12 +15,17 @@ export function Settings() {
         </h1>
       </div>
 
-      <div className="card">
-        <h2 className="card-header">General Settings</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Refresh Interval</label>
-            <select className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+      <Card>
+        <CardHeader>
+          <CardTitle>General Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="refresh-interval">Refresh Interval</Label>
+            <select
+              id="refresh-interval"
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
               <option value="10">10 seconds</option>
               <option value="30" selected>
                 30 seconds
@@ -25,72 +35,80 @@ export function Settings() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Alert Notifications</label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked className="rounded" />
-                <span className="text-sm">Critical alerts</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked className="rounded" />
-                <span className="text-sm">Warning alerts</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="rounded" />
-                <span className="text-sm">Info alerts</span>
-              </label>
+          <div className="space-y-4">
+            <Label>Alert Notifications</Label>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="critical-alerts" className="text-sm font-normal">
+                  Critical alerts
+                </Label>
+                <Switch id="critical-alerts" defaultChecked />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="warning-alerts" className="text-sm font-normal">
+                  Warning alerts
+                </Label>
+                <Switch id="warning-alerts" defaultChecked />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="info-alerts" className="text-sm font-normal">
+                  Info alerts
+                </Label>
+                <Switch id="info-alerts" />
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h2 className="card-header">TrueNAS Connection</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">API URL</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-              placeholder="http://truenas.local/api/v2.0"
-            />
+      <Card>
+        <CardHeader>
+          <CardTitle>TrueNAS Connection</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="api-url">API URL</Label>
+            <Input id="api-url" type="text" placeholder="http://truenas.local/api/v2.0" />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">API Key</label>
-            <input
-              type="password"
-              className="w-full px-3 py-2 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-              placeholder="Enter API key"
-            />
+          <div className="space-y-2">
+            <Label htmlFor="api-key">API Key</Label>
+            <Input id="api-key" type="password" placeholder="Enter API key" />
           </div>
 
-          <button className="btn-primary">Test Connection</button>
-        </div>
-      </div>
+          <Button>Test Connection</Button>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h2 className="card-header">About</h2>
-        <div className="space-y-2 text-sm">
-          <p>
-            <strong>Version:</strong> 1.0.0
-          </p>
-          <p>
-            <strong>Build:</strong> Production
-          </p>
-          <p>
-            <strong>Server:</strong> Connected
-          </p>
-          <p>
-            <strong>Uptime:</strong> 2d 5h 23m
-          </p>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>About</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Version:</span>
+              <span className="font-medium">1.0.0</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Build:</span>
+              <span className="font-medium">Production</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Server:</span>
+              <span className="font-medium">Connected</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Uptime:</span>
+              <span className="font-medium">2d 5h 23m</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex gap-4">
-        <button className="btn-primary">Save Settings</button>
-        <button className="btn-secondary">Reset to Defaults</button>
+        <Button>Save Settings</Button>
+        <Button variant="secondary">Reset to Defaults</Button>
       </div>
     </div>
   );
