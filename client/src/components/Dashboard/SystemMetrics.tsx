@@ -1,4 +1,5 @@
 import { Activity, Cpu, HardDrive, Zap } from 'lucide-react';
+import { memo, useMemo } from 'react';
 import { formatUptime } from '../../lib/utils';
 
 interface SystemMetricsProps {
@@ -10,7 +11,8 @@ interface SystemMetricsProps {
   };
 }
 
-export function SystemMetrics({ metrics }: SystemMetricsProps) {
+// Memoize SystemMetrics to prevent re-renders when parent rerenders but metrics unchanged
+export const SystemMetrics = memo(({ metrics }: SystemMetricsProps) => {
   if (!metrics) {
     return (
       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -24,6 +26,19 @@ export function SystemMetrics({ metrics }: SystemMetricsProps) {
   const uptime = metrics.uptime || 0;
   const load = metrics.load || [0, 0, 0];
 
+  // Memoize color class calculations to prevent recalculation on every render
+  const cpuBarColor = useMemo(() => {
+    if (cpuUsage > 80) return 'bg-red-500';
+    if (cpuUsage > 60) return 'bg-yellow-500';
+    return 'bg-green-500';
+  }, [cpuUsage]);
+
+  const memoryBarColor = useMemo(() => {
+    if (memoryPercent > 80) return 'bg-red-500';
+    if (memoryPercent > 60) return 'bg-yellow-500';
+    return 'bg-green-500';
+  }, [memoryPercent]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* CPU Usage */}
@@ -35,9 +50,7 @@ export function SystemMetrics({ metrics }: SystemMetricsProps) {
         <div className="text-2xl font-bold mb-2">{cpuUsage.toFixed(1)}%</div>
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
           <div
-            className={`h-2 rounded-full transition-all ${
-              cpuUsage > 80 ? 'bg-red-500' : cpuUsage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-            }`}
+            className={`h-2 rounded-full transition-all ${cpuBarColor}`}
             style={{ width: `${cpuUsage}%` }}
           />
         </div>
@@ -52,13 +65,7 @@ export function SystemMetrics({ metrics }: SystemMetricsProps) {
         <div className="text-2xl font-bold mb-2">{memoryPercent.toFixed(1)}%</div>
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
           <div
-            className={`h-2 rounded-full transition-all ${
-              memoryPercent > 80
-                ? 'bg-red-500'
-                : memoryPercent > 60
-                  ? 'bg-yellow-500'
-                  : 'bg-green-500'
-            }`}
+            className={`h-2 rounded-full transition-all ${memoryBarColor}`}
             style={{ width: `${memoryPercent}%` }}
           />
         </div>
@@ -87,4 +94,4 @@ export function SystemMetrics({ metrics }: SystemMetricsProps) {
       </div>
     </div>
   );
-}
+});
