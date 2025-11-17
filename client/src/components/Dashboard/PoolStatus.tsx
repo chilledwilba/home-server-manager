@@ -1,5 +1,6 @@
-import { AlertTriangle, CheckCircle, HardDrive, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Database, HardDrive, XCircle } from 'lucide-react';
 import { formatBytes } from '../../lib/utils';
+import { EmptyState } from '../ui/empty-state';
 
 interface Pool {
   name: string;
@@ -22,15 +23,17 @@ interface PoolStatusProps {
 export function PoolStatus({ pools }: PoolStatusProps) {
   if (!pools || pools.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-        No storage pools found
-      </div>
+      <EmptyState
+        icon={Database}
+        title="No storage pools found"
+        description="Storage pools will appear here once they are configured and detected."
+      />
     );
   }
 
   return (
     <div className="space-y-4">
-      {pools.map((pool) => {
+      {pools.map((pool, index) => {
         const capacity = pool.capacity || 0;
         const used = pool.used || 0;
         const available = pool.available || 0;
@@ -39,7 +42,11 @@ export function PoolStatus({ pools }: PoolStatusProps) {
         const statusColor = getStatusColor(pool.status);
 
         return (
-          <div key={pool.name} className="border dark:border-gray-700 rounded-lg p-4">
+          <div
+            key={pool.name}
+            className="border dark:border-gray-700 rounded-lg p-4 transition-all duration-200 hover:shadow-sm animate-in fade-in"
+            style={{ animationDelay: `${index * 50}ms` }}
+          >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <HardDrive className="w-5 h-5 text-gray-500" />

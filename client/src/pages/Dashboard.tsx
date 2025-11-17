@@ -1,6 +1,7 @@
 import { Activity, Bell, HardDrive, Server, Shield } from 'lucide-react';
 import { AlertFeed } from '../components/Dashboard/AlertFeed';
 import { ContainerGrid } from '../components/Dashboard/ContainerGrid';
+import { DashboardSkeleton } from '../components/Dashboard/DashboardSkeleton';
 import { PoolStatus } from '../components/Dashboard/PoolStatus';
 import { QuickActions } from '../components/Dashboard/QuickActions';
 import { SystemMetrics } from '../components/Dashboard/SystemMetrics';
@@ -11,17 +12,14 @@ import type { Alert, ContainerInfo, Pool, SystemMetrics as SystemMetricsType } f
 
 export function Dashboard() {
   const { data: metricsData, isLoading: metricsLoading } = useMetrics();
-  const { data: poolsData } = usePools();
-  const { data: containersData } = useContainers();
-  const { data: securityData } = useSecurityStatus();
-  const { data: alertsData } = useAlerts({ limit: 10 });
+  const { data: poolsData, isLoading: poolsLoading } = usePools();
+  const { data: containersData, isLoading: containersLoading } = useContainers();
+  const { data: securityData, isLoading: securityLoading } = useSecurityStatus();
+  const { data: alertsData, isLoading: alertsLoading } = useAlerts({ limit: 10 });
 
-  if (metricsLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="spinner h-12 w-12" />
-      </div>
-    );
+  // Show skeleton while any critical data is loading
+  if (metricsLoading || poolsLoading || containersLoading || securityLoading || alertsLoading) {
+    return <DashboardSkeleton />;
   }
 
   const pools = (poolsData?.pools || []) as Pool[];
@@ -30,7 +28,7 @@ export function Dashboard() {
   const metrics = metricsData?.data as SystemMetricsType | undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard

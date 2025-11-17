@@ -1,6 +1,7 @@
-import { AlertCircle, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { AlertCircle, AlertTriangle, BellOff, CheckCircle, Info } from 'lucide-react';
 import { formatRelativeTime } from '../../lib/utils';
 import { Badge } from '../ui/badge';
+import { EmptyState } from '../ui/empty-state';
 
 interface Alert {
   id: number;
@@ -18,15 +19,22 @@ interface AlertFeedProps {
 
 export function AlertFeed({ alerts }: AlertFeedProps) {
   if (!alerts || alerts.length === 0) {
-    return <div className="text-center py-8 text-muted-foreground">No recent alerts</div>;
+    return (
+      <EmptyState
+        icon={BellOff}
+        title="No alerts"
+        description="All systems are running smoothly. Alerts will appear here when issues are detected."
+      />
+    );
   }
 
   return (
     <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
-      {alerts.map((alert) => (
+      {alerts.map((alert, index) => (
         <div
           key={alert.id}
-          className={`p-3 rounded-lg border-l-4 ${getSeverityBorderColor(alert.severity)}`}
+          className={`p-3 rounded-lg border-l-4 transition-all duration-200 hover:shadow-sm animate-in fade-in ${getSeverityBorderColor(alert.severity)}`}
+          style={{ animationDelay: `${index * 30}ms` }}
         >
           <div className="flex items-start gap-2">
             {getSeverityIcon(alert.severity)}

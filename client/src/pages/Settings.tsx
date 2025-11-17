@@ -3,6 +3,7 @@ import { Settings as SettingsIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { SettingsSkeleton } from '@/components/Settings/SettingsSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -79,11 +80,7 @@ export function Settings() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-muted-foreground">Loading settings...</div>
-      </div>
-    );
+    return <SettingsSkeleton />;
   }
 
   if (!currentSettings) {
@@ -95,7 +92,7 @@ export function Settings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <SettingsIcon className="w-6 h-6" />
@@ -103,7 +100,10 @@ export function Settings() {
         </h1>
       </div>
 
-      <Card>
+      <Card
+        className="transition-shadow duration-200 hover:shadow-md animate-in fade-in"
+        style={{ animationDelay: '100ms' }}
+      >
         <CardHeader>
           <CardTitle>General Settings</CardTitle>
           <CardDescription>Configure your monitoring preferences</CardDescription>
@@ -191,7 +191,10 @@ export function Settings() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card
+        className="transition-shadow duration-200 hover:shadow-md animate-in fade-in"
+        style={{ animationDelay: '200ms' }}
+      >
         <CardHeader>
           <CardTitle>TrueNAS Connection</CardTitle>
           <CardDescription>Configure your TrueNAS API connection</CardDescription>

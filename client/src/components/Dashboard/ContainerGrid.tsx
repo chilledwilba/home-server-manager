@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Container, Play, RefreshCw, Square } from 'lucide-react';
+import { Box, Container, Play, RefreshCw, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -16,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { apiClient } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
 
@@ -76,13 +77,23 @@ export function ContainerGrid({ containers }: ContainerGridProps) {
   });
 
   if (!containers || containers.length === 0) {
-    return <div className="text-center py-8 text-muted-foreground">No containers found</div>;
+    return (
+      <EmptyState
+        icon={Box}
+        title="No containers found"
+        description="Docker containers will appear here once they are detected by the system."
+      />
+    );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {containers.map((container) => (
-        <Card key={container.id} className="hover:shadow-md transition-shadow">
+      {containers.map((container, index) => (
+        <Card
+          key={container.id}
+          className="hover:shadow-md transition-all duration-200 hover:scale-[1.02] animate-in fade-in"
+          style={{ animationDelay: `${index * 50}ms` }}
+        >
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
