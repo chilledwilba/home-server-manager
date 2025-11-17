@@ -1,0 +1,44 @@
+{
+  "recommendations": [
+    // Linter & Formatter
+    "biomejs.biome",
+
+    // TypeScript
+    "usernamehw.errorlens",
+    "dbaeumer.vscode-eslint",
+
+    // React & Frontend
+    "dsznajder.es7-react-js-snippets",
+    "bradlc.vscode-tailwindcss",
+
+    // Testing
+    "orta.vscode-jest",
+    "ms-playwright.playwright",
+
+    // Git
+    "eamodio.gitlens",
+
+    // Markdown
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+
+    // Utilities
+    "christian-kohler.path-intellisense",
+    "christian-kohler.npm-intellisense",
+    "visualstudioexptteam.vscodeintellicode",
+    "streetsidesoftware.code-spell-checker",
+
+    // Docker
+    "ms-azuretools.vscode-docker",
+
+    // Database
+    "qwtel.sqlite-viewer",
+
+    // API Development
+    "humao.rest-client",
+
+    // Environment
+    "mikestead.dotenv"
+  ],
+  "unwantedRecommendations": ["ms-vscode.vscode-typescript-tslint-plugin"]
+}
