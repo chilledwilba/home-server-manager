@@ -200,6 +200,22 @@ class ApiClient {
     );
   }
 
+  // Feature Flags
+  async getFeatureFlags() {
+    return this.request<{
+      success: boolean;
+      flags: Record<
+        string,
+        {
+          name: string;
+          enabled: boolean;
+          description?: string;
+          environments?: string[];
+        }
+      >;
+    }>('/api/feature-flags');
+  }
+
   // Settings
   async getSettings() {
     return this.request<{

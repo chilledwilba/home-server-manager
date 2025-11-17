@@ -1,27 +1,55 @@
-import { AlertCircle, RefreshCw, Settings, Shield } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, Flag, RefreshCw, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Button } from '../ui/button';
 
 export function QuickActions() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const handleRefreshAll = () => {
+    queryClient.invalidateQueries();
+    toast.success('Refreshing all data...');
+  };
+
   return (
     <div className="space-y-2">
-      <button className="w-full flex items-center gap-3 px-4 py-3 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-lg transition-colors">
+      <Button
+        onClick={handleRefreshAll}
+        className="w-full justify-start gap-3 h-auto py-3"
+        variant="secondary"
+      >
         <RefreshCw className="w-5 h-5" />
         <span className="font-medium">Refresh All Data</span>
-      </button>
+      </Button>
 
-      <button className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors">
+      <Button
+        onClick={() => navigate('/alerts')}
+        className="w-full justify-start gap-3 h-auto py-3"
+        variant="outline"
+      >
         <AlertCircle className="w-5 h-5" />
         <span className="font-medium">View All Alerts</span>
-      </button>
+      </Button>
 
-      <button className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors">
-        <Shield className="w-5 h-5" />
-        <span className="font-medium">Security Status</span>
-      </button>
+      <Button
+        onClick={() => navigate('/feature-flags')}
+        className="w-full justify-start gap-3 h-auto py-3"
+        variant="outline"
+      >
+        <Flag className="w-5 h-5" />
+        <span className="font-medium">Feature Flags</span>
+      </Button>
 
-      <button className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors">
+      <Button
+        onClick={() => navigate('/settings')}
+        className="w-full justify-start gap-3 h-auto py-3"
+        variant="outline"
+      >
         <Settings className="w-5 h-5" />
         <span className="font-medium">System Settings</span>
-      </button>
+      </Button>
     </div>
   );
 }

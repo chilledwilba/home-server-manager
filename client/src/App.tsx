@@ -6,6 +6,7 @@ import { Alerts } from './pages/Alerts';
 import { ArrMonitoring } from './pages/ArrMonitoring';
 import { Containers } from './pages/Containers';
 import { Dashboard } from './pages/Dashboard';
+import { FeatureFlags } from './pages/FeatureFlags';
 import { Pools } from './pages/Pools';
 import { Security } from './pages/Security';
 import { Settings } from './pages/Settings';
@@ -22,6 +23,7 @@ function App() {
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/security" element={<Security />} />
             <Route path="/arr" element={<ArrMonitoring />} />
+            <Route path="/feature-flags" element={<FeatureFlags />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
