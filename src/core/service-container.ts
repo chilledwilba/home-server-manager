@@ -304,8 +304,7 @@ export class ServiceContainer {
     }
 
     // Auto-Remediation Service
-    const portainerClient = this.get<PortainerClient>('portainerClient');
-    this.services.set('remediationService', new AutoRemediationService(this.db, portainerClient));
+    this.services.set('remediationService', new AutoRemediationService(this.db));
 
     logger.info('Core services initialized');
   }

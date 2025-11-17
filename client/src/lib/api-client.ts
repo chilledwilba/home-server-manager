@@ -1,13 +1,12 @@
 import { QueryClient } from '@tanstack/react-query';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3100';
+import { API_CONFIG } from './config';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchInterval: 30000, // 30 seconds
-      staleTime: 10000, // 10 seconds
-      retry: 3,
+      refetchInterval: API_CONFIG.REFETCH_INTERVAL,
+      staleTime: API_CONFIG.STALE_TIME,
+      retry: API_CONFIG.RETRY_ATTEMPTS,
     },
   },
 });
@@ -16,9 +15,9 @@ class ApiClient {
   private baseUrl: string;
   private token: string | null = null;
 
-  constructor(baseUrl: string = API_BASE_URL) {
+  constructor(baseUrl: string = API_CONFIG.BASE_URL) {
     this.baseUrl = baseUrl;
-    this.token = localStorage.getItem('auth_token');
+    this.token = localStorage.getItem(API_CONFIG.AUTH_TOKEN_KEY);
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

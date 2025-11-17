@@ -1,5 +1,4 @@
 import type Database from 'better-sqlite3';
-import type { PortainerClient } from '../../integrations/portainer/client.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('remediation');
@@ -26,12 +25,7 @@ export class AutoRemediationService {
   private actions: Map<string, RemediationAction> = new Map();
   private pendingApprovals: Map<number, RemediationAction> = new Map();
 
-  constructor(
-    private db: Database.Database,
-    // Portainer client for container operations in remediation
-    // @ts-expect-error - Will be used for container restart/management actions
-    private portainer?: PortainerClient,
-  ) {
+  constructor(private db: Database.Database) {
     this.registerActions();
   }
 

@@ -62,8 +62,7 @@ export class SecurityOrchestrator {
   constructor(
     private db: Database.Database,
     private io: SocketServer,
-    // @ts-expect-error - Used in constructor to initialize clients
-    private config: SecurityConfig,
+    config: SecurityConfig,
   ) {
     // Initialize clients if configured
     if (config.cloudflare) {

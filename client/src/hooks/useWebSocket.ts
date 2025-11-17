@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import io, { type Socket } from 'socket.io-client';
 import { toast } from 'sonner';
+import { API_CONFIG, WEBSOCKET_CONFIG } from '../lib/config';
 
 interface WebSocketMessage {
   type: string;
@@ -8,7 +9,7 @@ interface WebSocketMessage {
   timestamp: Date;
 }
 
-export function useWebSocket(url: string = 'http://localhost:3100') {
+export function useWebSocket(url: string = API_CONFIG.BASE_URL) {
   const [connected, setConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -16,10 +17,10 @@ export function useWebSocket(url: string = 'http://localhost:3100') {
   useEffect(() => {
     // Create socket connection
     const socket = io(url, {
-      transports: ['websocket'],
+      transports: [...WEBSOCKET_CONFIG.TRANSPORTS],
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
+      reconnectionDelay: WEBSOCKET_CONFIG.RECONNECTION_DELAY,
+      reconnectionAttempts: WEBSOCKET_CONFIG.RECONNECTION_ATTEMPTS,
     });
 
     socketRef.current = socket;
